@@ -14,6 +14,7 @@ import {
   BarChart as BarChartIcon,
 } from "lucide-react";
 import Header from "../components/Header";
+import PopSelect from "../components/PopSelect"; // <--- IMPORTANTE: Importamos el componente Pop
 import { getAllReviews } from "../services/firestoreService";
 import { CATEGORIES } from "../constants/categories";
 import {
@@ -55,6 +56,25 @@ const Stats = ({ onBack }) => {
   const [selectedCategory, setSelectedCategory] = useState("Todas");
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+
+  // Datos auxiliares para los selectores
+  const monthNames = [
+    "Enero",
+    "Febrero",
+    "Marzo",
+    "Abril",
+    "Mayo",
+    "Junio",
+    "Julio",
+    "Agosto",
+    "Septiembre",
+    "Octubre",
+    "Noviembre",
+    "Diciembre",
+  ];
+
+  // Opciones combinadas para categorías
+  const categoryOptions = ["Todas", ...CATEGORIES];
 
   useEffect(() => {
     const loadData = async () => {
@@ -133,7 +153,7 @@ const Stats = ({ onBack }) => {
     const trendMap = {};
     // B. Día de la Semana
     const daysMap = { 0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 }; // 0=Domingo
-    const dayNames = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
+    const dayNamesChart = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
     // C. Distribución de Ratings
     const ratingMap = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
     // D. Scatter (Precio vs Rating)
@@ -200,7 +220,7 @@ const Stats = ({ onBack }) => {
 
     // Formatear Días Semana
     const dayOfWeekChart = Object.entries(daysMap).map(([dayIndex, count]) => ({
-      name: dayNames[dayIndex],
+      name: dayNamesChart[dayIndex],
       count,
       fullMark: 100, // Para radar chart visual
     }));
@@ -299,54 +319,54 @@ const Stats = ({ onBack }) => {
           initial={{ y: -20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
         >
-          ANALIZAME ESTA !!! 💥
+          ANÁLISIS POP 💥
         </motion.h1>
 
-        {/* --- FILTROS --- */}
+        {/* --- FILTROS (AHORA CON POPSELECT) --- */}
         <div className="filters-bar">
+          {/* Selector de Categoría */}
           <div className="filter-group">
             <span className="filter-label">Categoría</span>
-            <select
-              className="pop-select"
-              value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
-            >
-              <option value="Todas">Todas</option>
-              {CATEGORIES.map((cat) => (
-                <option key={cat} value={cat}>
-                  {cat}
-                </option>
-              ))}
-            </select>
+            <div style={{ width: "200px" }}>
+              {" "}
+              {/* Contenedor para controlar ancho */}
+              <PopSelect
+                options={categoryOptions}
+                value={selectedCategory}
+                onChange={setSelectedCategory}
+                placeholder="Seleccionar..."
+              />
+            </div>
           </div>
+
           {activeTab === "month" && (
             <>
+              {/* Selector de Mes */}
               <div className="filter-group">
                 <span className="filter-label">Mes</span>
-                <select
-                  className="pop-select"
-                  value={selectedMonth}
-                  onChange={(e) => setSelectedMonth(e.target.value)}
-                >
-                  {Array.from({ length: 12 }, (_, i) => (
-                    <option key={i + 1} value={i + 1}>
-                      {new Date(0, i).toLocaleString("es-ES", {
-                        month: "long",
-                      })}
-                    </option>
-                  ))}
-                </select>
+                <div style={{ width: "160px" }}>
+                  <PopSelect
+                    options={monthNames}
+                    value={monthNames[selectedMonth - 1]} // Mostramos el nombre (ej: "Diciembre")
+                    onChange={(val) =>
+                      setSelectedMonth(monthNames.indexOf(val) + 1)
+                    } // Guardamos el número (ej: 12)
+                    placeholder="Mes"
+                  />
+                </div>
               </div>
+
+              {/* Selector de Año */}
               <div className="filter-group">
                 <span className="filter-label">Año</span>
-                <select
-                  className="pop-select"
-                  value={selectedYear}
-                  onChange={(e) => setSelectedYear(e.target.value)}
-                >
-                  <option value="2024">2024</option>
-                  <option value="2025">2025</option>
-                </select>
+                <div style={{ width: "120px" }}>
+                  <PopSelect
+                    options={["2024", "2025"]}
+                    value={String(selectedYear)}
+                    onChange={(val) => setSelectedYear(parseInt(val))}
+                    placeholder="Año"
+                  />
+                </div>
               </div>
             </>
           )}
@@ -722,7 +742,7 @@ const Stats = ({ onBack }) => {
               </div>
             </div>
 
-            {/* TOP PLACES Y EXTREMOS (Igual que antes pero reordenado) */}
+            {/* TOP PLACES Y EXTREMOS */}
             <div
               style={{
                 display: "grid",
