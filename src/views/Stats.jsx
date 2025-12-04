@@ -299,7 +299,7 @@ const Stats = ({ onBack }) => {
           initial={{ y: -20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
         >
-          ANÁLISIS POP 💥
+          ANALIZAME ESTA !!! 💥
         </motion.h1>
 
         {/* --- FILTROS --- */}
