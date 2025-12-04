@@ -11,8 +11,6 @@ const StarRating = ({
   const handleStarClick = (value, isHalf) => {
     if (!interactive) return;
     const newRating = isHalf ? value - 0.5 : value;
-    // Si tocas la misma estrella que ya está seleccionada, podrías querer resetearla o no.
-    // Aquí simplemente actualizamos.
     onRatingChange(newRating);
   };
 
@@ -21,7 +19,6 @@ const StarRating = ({
       className={`star-rating-container ${interactive ? "interactive" : ""}`}
     >
       {[1, 2, 3, 4, 5].map((index) => {
-        // Lógica para saber cuánto llenar esta estrella específica
         let fillPercentage = 0;
         if (rating >= index) {
           fillPercentage = 100;
@@ -35,7 +32,7 @@ const StarRating = ({
             className="star-wrapper"
             style={{ width: size, height: size }}
           >
-            {/* ZONAS DE CLIC (Invisibles, están encima de todo) */}
+            {/* ZONAS DE CLIC */}
             {interactive && (
               <>
                 <button
@@ -53,32 +50,28 @@ const StarRating = ({
               </>
             )}
 
-            {/* CAPA 1: Estrella Fondo (Gris / Outline) */}
-            <Star size={size} className="star-bg" strokeWidth={2} />
+            {/* CAPA 1: Estrella Fondo (Blanca con borde negro) */}
+            {/* strokeWidth={3} para el estilo Pop grueso */}
+            <Star size={size} className="star-bg" strokeWidth={3} />
 
-            {/* CAPA 2: Estrella Relleno (Color) - Animada */}
+            {/* CAPA 2: Estrella Relleno (Amarilla con borde negro) */}
             <motion.div
               className="star-fill-mask"
               initial={false}
               animate={{ width: `${fillPercentage}%` }}
-              transition={{ type: "spring", stiffness: 400, damping: 30 }}
+              transition={{ type: "spring", stiffness: 400, damping: 25 }}
             >
-              <Star
-                size={size}
-                className="star-fg"
-                strokeWidth={0} // Sin borde para que se vea "relleno suave"
-                fill="currentColor"
-              />
+              <Star size={size} className="star-fg" strokeWidth={3} />
             </motion.div>
           </div>
         );
       })}
 
-      {/* Texto de puntaje numérico al lado (Opcional, muy útil UX) */}
+      {/* Badge con el número */}
       {interactive && rating > 0 && (
         <motion.span
-          initial={{ opacity: 0, x: -10 }}
-          animate={{ opacity: 1, x: 0 }}
+          initial={{ opacity: 0, scale: 0.5 }}
+          animate={{ opacity: 1, scale: 1 }}
           key={rating}
           className="rating-number"
         >

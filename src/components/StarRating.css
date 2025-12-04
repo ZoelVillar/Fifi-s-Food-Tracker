@@ -1,17 +1,24 @@
 .star-rating-container {
   display: flex;
   align-items: center;
-  gap: 6px; /* Espacio entre estrellas */
+  gap: 4px; /* Un poco más pegadas para que parezcan un grupo */
 }
 
 .star-wrapper {
   position: relative;
   display: inline-block;
   cursor: default;
+  /* Para evitar problemas de renderizado con los bordes */
+  transform: translateZ(0);
 }
 
 .interactive .star-wrapper {
   cursor: pointer;
+  transition: transform 0.1s;
+}
+
+.interactive .star-wrapper:active {
+  transform: scale(0.9); /* Efecto de presionar */
 }
 
 /* --- LOGICA DE CLIC (Invisible) --- */
@@ -22,7 +29,7 @@
   width: 50%;
   background: transparent;
   border: none;
-  z-index: 10; /* Encima de todo */
+  z-index: 10;
   cursor: pointer;
   padding: 0;
 }
@@ -34,49 +41,52 @@
   right: 0;
 }
 
-/* --- ESTILOS DE LA ESTRELLA FONDO --- */
+/* --- CAPA FONDO (La estrella "vacía") --- */
 .star-bg {
-  color: #e5e7eb; /* Gris suave (Tailwind gray-200) */
-  fill: #f3f4f6; /* Relleno muy sutil */
+  color: #1a1a1a; /* Borde Negro */
+  fill: #ffffff; /* Relleno Blanco */
   position: absolute;
   top: 0;
   left: 0;
   z-index: 1;
+  /* Sombra dura pequeña para dar profundidad */
+  filter: drop-shadow(2px 2px 0px rgba(0, 0, 0, 0.1));
 }
 
-/* --- ESTILOS DE LA ESTRELLA RELLENO --- */
+/* --- CAPA RELLENO (La máscara) --- */
 .star-fill-mask {
   position: absolute;
   top: 0;
   left: 0;
   height: 100%;
-  overflow: hidden; /* Esto hace la magia del recorte */
+  overflow: hidden;
   z-index: 2;
-  pointer-events: none; /* Los clics pasan a través de esto */
+  pointer-events: none;
 }
 
+/* --- CAPA SUPERIOR (La estrella "llena") --- */
 .star-fg {
-  color: #ffb800; /* Amarillo Ámbar Vibrante */
-  /* Si prefieres el gradiente naranja del header usa: color: #FF8E53; */
-  fill: currentColor;
+  color: #1a1a1a; /* Borde Negro (mismo grosor) */
+  fill: #ffdd59; /* Amarillo Pop */
   position: absolute;
   top: 0;
   left: 0;
-
-  /* Truco: Filtro para dar brillo "Pop" */
-  filter: drop-shadow(0 0 2px rgba(255, 184, 0, 0.4));
-}
-
-/* Efecto Hover en el contenedor general (opcional) */
-.interactive .star-wrapper:hover .star-bg {
-  color: #d1d5db; /* Se oscurece un poco el fondo al pasar el mouse */
+  /* Importante: Sin sombra aquí para que no se duplique raro al cortar */
 }
 
 /* --- NÚMERO DE PUNTUACIÓN --- */
 .rating-number {
-  margin-left: 8px;
-  font-size: 18px;
-  font-weight: 800;
-  color: #ffb800;
-  min-width: 30px;
+  margin-left: 10px;
+  font-family: "Fredoka", sans-serif;
+  font-size: 20px;
+  font-weight: 700;
+  color: #1a1a1a;
+  background: #ffdd59;
+  padding: 2px 8px;
+  border-radius: 6px;
+  border: 2px solid #1a1a1a;
+  line-height: 1;
+  box-shadow: 2px 2px 0px #1a1a1a;
+  min-width: 40px;
+  text-align: center;
 }

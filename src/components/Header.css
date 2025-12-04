@@ -1,124 +1,127 @@
-/* Variables para fácil ajuste */
-:root {
-  --primary-gradient: linear-gradient(135deg, #ff6b6b 0%, #ff8e53 100%);
-  --glass-bg: rgba(255, 255, 255, 0.85);
-  --glass-border: rgba(255, 255, 255, 0.5);
-  --shadow-color: rgba(255, 107, 107, 0.4);
-}
-
 .app-header {
-  margin-bottom: 20px;
   position: sticky;
   top: 0;
   z-index: 1000;
-  /* Efecto Glassmorphism (Vidrio) */
-  background: var(--glass-bg);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  background: #ffffff;
+  border-bottom: 3px solid #1a1a1a;
+  padding: 12px 0;
+  /* Sombra dura debajo del header para separarlo del contenido */
+  box-shadow: 0px 4px 0px rgba(0, 0, 0, 0.1);
+  margin-bottom: 20px;
 }
 
 .header-content {
-  max-width: 1200px; /* Contenedor para que no se estire infinito en desktop */
+  max-width: 1000px;
   margin: 0 auto;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 16px 20px;
+  padding: 0 20px;
 }
 
-/* --- LOGO Y TÍTULO --- */
+/* --- LOGO POP --- */
 .logo-container {
   display: flex;
   align-items: center;
   gap: 12px;
+  cursor: pointer; /* Invita a volver al home */
 }
 
 .logo-icon-bg {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
-  background: var(--primary-gradient);
+  width: 42px;
+  height: 42px;
+  background: #ffdd59; /* Amarillo Pop */
+  border: 3px solid #1a1a1a;
   border-radius: 12px;
-  box-shadow: 0 4px 10px var(--shadow-color);
-  transform: rotate(-5deg); /* Un toque "juguetón" */
+  box-shadow: 3px 3px 0px #1a1a1a;
+  transform: rotate(-3deg); /* Inclinación juguetona */
+  transition: transform 0.2s;
+}
+
+.logo-container:hover .logo-icon-bg {
+  transform: rotate(0deg) scale(1.1);
 }
 
 .app-title {
-  font-size: 22px;
-  font-weight: 800; /* Extra bold */
+  font-family: "Fredoka", sans-serif;
+  font-size: 24px;
+  font-weight: 700;
   color: #1a1a1a;
   margin: 0;
-  letter-spacing: -0.03em; /* Tighter spacing looks more professional */
-  font-family: "Inter", -apple-system, sans-serif;
+  letter-spacing: 0.5px;
+  display: flex;
+  align-items: center;
 }
 
-.text-gradient {
-  background: var(--primary-gradient);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  margin-left: 2px;
+/* El texto "Wrapped" ahora es un badge colorido */
+.text-pop {
+  background: #ff5e57; /* Rosa Pop */
+  color: white;
+  padding: 2px 8px;
+  border-radius: 6px;
+  border: 2px solid #1a1a1a;
+  margin-left: 6px;
+  font-size: 18px;
+  transform: rotate(2deg);
+  box-shadow: 2px 2px 0px #1a1a1a;
 }
 
-/* --- BOTÓN DE ESTADÍSTICAS --- */
+/* --- BOTÓN ANÁLISIS --- */
 .stats-button {
   display: flex;
   align-items: center;
   gap: 8px;
   padding: 10px 18px;
-  background: #ffffff;
-  color: #ff6b6b; /* Color del texto igual al primario */
-  border: 2px solid rgba(255, 107, 107, 0.1); /* Borde sutil */
-  border-radius: 100px; /* Pill shape (Pastilla) */
-  font-size: 15px;
+  background: #0fbcf9; /* Azul Cyan Pop */
+  color: #1a1a1a;
+  border: 3px solid #1a1a1a;
+  border-radius: 50px; /* Estilo pastilla */
+  font-family: "Fredoka", sans-serif;
+  font-size: 16px;
   font-weight: 700;
   cursor: pointer;
-  /* Sombra suave */
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
-  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  /* La Sombra Dura característica */
+  box-shadow: 4px 4px 0px #1a1a1a;
+  transition: all 0.15s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 
 .stats-button:hover {
-  background: var(--primary-gradient);
-  color: white;
-  border-color: transparent;
-  box-shadow: 0 8px 20px var(--shadow-color); /* Glow al hacer hover */
-  transform: translateY(-2px);
+  transform: translate(-2px, -2px); /* Se levanta un poco */
+  box-shadow: 6px 6px 0px #1a1a1a; /* La sombra crece */
+  background: #2bcbba; /* Cambia ligeramente de color (verde agua) */
+}
+
+.stats-button:active {
+  transform: translate(2px, 2px); /* Efecto de presionar botón físico */
+  box-shadow: 0px 0px 0px #1a1a1a; /* La sombra desaparece al presionar */
+}
+
+/* Ajuste de iconos */
+.stats-button svg {
+  stroke-width: 3px; /* Líneas más gruesas en los iconos */
 }
 
 /* --- RESPONSIVE MOBILE --- */
 @media (max-width: 480px) {
-  .header-content {
-    padding: 14px 16px;
-  }
-
   .app-title {
-    font-size: 18px;
+    font-size: 20px;
   }
 
-  .logo-icon-bg {
-    width: 32px;
-    height: 32px;
-    border-radius: 10px;
+  .text-pop {
+    font-size: 14px;
+    padding: 1px 6px;
   }
 
-  .logo-icon-bg svg {
-    width: 16px;
-    height: 16px;
-  }
-
-  /* En móvil, convertimos el botón en un círculo perfecto */
-  .stats-button {
-    padding: 0;
-    width: 40px;
-    height: 40px;
-    justify-content: center;
-    border-radius: 50%;
-  }
-
-  .btn-text {
+  /* En móvil, solo mostramos el icono del botón stats */
+  .stats-button .btn-text {
     display: none;
+  }
+
+  .stats-button {
+    padding: 10px;
+    border-radius: 12px; /* Cuadrado redondeado en móvil */
   }
 }

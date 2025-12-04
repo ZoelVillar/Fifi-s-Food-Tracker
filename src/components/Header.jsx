@@ -1,22 +1,30 @@
 import { motion } from "framer-motion";
-import { BarChart3, UtensilsCrossed } from "lucide-react"; // Agregué un icono extra para el título
+import { BarChart3, UtensilsCrossed } from "lucide-react";
 import "./Header.css";
 
 const Header = ({ onStatsClick, showStatsButton = true }) => {
+  // Función simple para recargar o ir al inicio si estamos en stats
+  // Nota: En una app con routing real usaríamos useNavigate o Link
+  const handleLogoClick = () => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    // Si tienes una prop para navegar a home, úsala aquí.
+    // Por ahora es meramente estético o para scroll top.
+  };
+
   return (
     <motion.header
       className="app-header"
       initial={{ y: -100 }}
       animate={{ y: 0 }}
-      transition={{ type: "spring", stiffness: 300, damping: 30 }}
+      transition={{ type: "spring", stiffness: 300, damping: 20 }}
     >
       <div className="header-content">
-        <div className="logo-container">
+        <div className="logo-container" onClick={handleLogoClick}>
           <div className="logo-icon-bg">
-            <UtensilsCrossed size={20} color="#fff" />
+            <UtensilsCrossed size={22} color="#1a1a1a" strokeWidth={2.5} />
           </div>
           <h1 className="app-title">
-            Food<span className="text-gradient">Wrapped</span>
+            Fifi's<span className="text-pop">Food</span>
           </h1>
         </div>
 
@@ -24,10 +32,10 @@ const Header = ({ onStatsClick, showStatsButton = true }) => {
           <motion.button
             className="stats-button"
             onClick={onStatsClick}
-            whileHover={{ scale: 1.05, y: -2 }}
+            whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
           >
-            <BarChart3 size={20} strokeWidth={2.5} />
+            <BarChart3 size={20} />
             <span className="btn-text">Análisis</span>
           </motion.button>
         )}

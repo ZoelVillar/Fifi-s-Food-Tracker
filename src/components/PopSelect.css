@@ -1,0 +1,104 @@
+/* Contenedor relativo para posicionar el menú flotante */
+.pop-select-container {
+  position: relative;
+  width: 100%;
+  font-family: "Fredoka", sans-serif;
+}
+
+/* --- EL BOTÓN PRINCIPAL (Lo que ves cuando está cerrado) --- */
+.pop-select-trigger {
+  width: 100%;
+  padding: 14px 16px;
+  background: #ffffff;
+  border: 3px solid #1a1a1a;
+  border-radius: 12px;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 16px;
+  font-weight: 600;
+  color: #1a1a1a;
+  box-shadow: 4px 4px 0px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+/* Efecto al pasar el mouse o estar abierto */
+.pop-select-trigger:hover,
+.pop-select-trigger.open {
+  background: #fffbef; /* Amarillo pálido */
+  transform: translate(-2px, -2px);
+  box-shadow: 6px 6px 0px #1a1a1a; /* Sombra dura negra */
+}
+
+/* Icono de flecha */
+.arrow-icon {
+  transition: transform 0.3s ease;
+  flex-shrink: 0;
+}
+
+.pop-select-trigger.open .arrow-icon {
+  transform: rotate(180deg);
+}
+
+/* --- EL MENÚ DESPLEGABLE (La lista) --- */
+.pop-options-list {
+  position: absolute;
+  top: calc(100% + 8px); /* Un poco separado del trigger */
+  left: 0;
+  width: 100%;
+  background: #ffffff;
+  border: 3px solid #1a1a1a;
+  border-radius: 12px;
+  box-shadow: 8px 8px 0px rgba(0, 0, 0, 0.2);
+  z-index: 100; /* Para que flote sobre todo lo demás */
+  max-height: 240px;
+  overflow-y: auto; /* Scroll si hay muchos items */
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+/* Estilo del Scrollbar para que combine */
+.pop-options-list::-webkit-scrollbar {
+  width: 10px;
+}
+.pop-options-list::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-left: 2px solid #1a1a1a;
+  border-radius: 0 10px 10px 0;
+}
+.pop-options-list::-webkit-scrollbar-thumb {
+  background: #1a1a1a;
+  border-radius: 10px;
+  border: 2px solid #f1f1f1;
+}
+
+/* --- CADA OPCIÓN --- */
+.pop-option-item {
+  padding: 12px 16px;
+  cursor: pointer;
+  font-weight: 600;
+  color: #1a1a1a;
+  border-bottom: 2px solid #f3f4f6;
+  transition: all 0.1s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pop-option-item:last-child {
+  border-bottom: none;
+}
+
+/* Hover en las opciones: Explosión de color */
+.pop-option-item:hover {
+  background: #ffdd59; /* Amarillo */
+  padding-left: 24px; /* Pequeño desplazamiento a la derecha */
+}
+
+.pop-option-item.selected {
+  background: #0fbcf9; /* Azul cyan */
+  color: white; /* Texto blanco en el seleccionado */
+}

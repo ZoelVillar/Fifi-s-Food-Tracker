@@ -1,20 +1,42 @@
+/* Importamos variables si no están globales, pero asumimos el sistema Pop definido */
 .review-card {
   background: #ffffff;
-  border-radius: 24px; /* Bordes mucho más redondeados (Modern UI) */
-  padding: 24px;
-  margin-bottom: 20px;
+  border: 3px solid #1a1a1a; /* Borde grueso */
+  border-radius: 16px; /* Menos redondeado que antes */
+  padding: 20px;
+  margin-bottom: 24px;
   position: relative;
-  border: 1px solid rgba(0, 0, 0, 0.04);
-  /* Sombra suave y difusa */
-  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.05);
-  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  /* La sombra dura característica */
+  box-shadow: 6px 6px 0px #1a1a1a;
+  transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
   overflow: hidden;
 }
 
 .review-card:hover {
-  border-color: rgba(255, 107, 107, 0.3); /* Borde sutil al hover */
-  box-shadow: 0 20px 40px -12px rgba(255, 107, 107, 0.15); /* Sombra con color (Pop) */
+  transform: translate(-2px, -2px); /* Se levanta */
+  box-shadow: 8px 8px 0px #1a1a1a; /* La sombra crece */
+  border-color: #1a1a1a; /* Mantiene el negro */
 }
+
+/* Decoración superior (opcional): Una línea de color aleatoria o fija */
+.review-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 6px;
+  background: #ffdd59; /* Amarillo por defecto */
+  border-bottom: 3px solid #1a1a1a;
+}
+
+/* Variaciones de color para la barra superior (se pueden aplicar con JS o CSS nth-child) */
+.review-card:nth-child(odd)::before {
+  background: #0fbcf9;
+} /* Azul */
+.review-card:nth-child(3n)::before {
+  background: #ff5e57;
+} /* Rosa */
 
 /* --- SECCIÓN SUPERIOR --- */
 .card-top {
@@ -22,35 +44,42 @@
   justify-content: space-between;
   align-items: flex-start;
   gap: 12px;
+  margin-top: 8px; /* Espacio para la barra de color */
   margin-bottom: 16px;
 }
 
 .place-info {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
 }
 
 .review-place {
-  font-size: 20px;
-  font-weight: 800; /* Extra bold */
+  font-family: "Fredoka", sans-serif; /* Fuente Pop */
+  font-size: 22px;
+  font-weight: 700;
   color: #1a1a1a;
   margin: 0;
-  line-height: 1.2;
-  letter-spacing: -0.02em;
+  line-height: 1.1;
+  text-transform: uppercase; /* Más impacto */
 }
 
 .location-badge {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 4px;
   font-size: 13px;
-  font-weight: 600;
-  color: #9ca3af;
+  font-weight: 700;
+  color: #1a1a1a;
+  background: #f3f4f6;
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 2px solid #1a1a1a;
+  align-self: flex-start;
 }
 
 .location-badge svg {
-  color: #ff6b6b; /* Icono de mapa en color acento */
+  color: #ff5e57; /* Pin rojo */
 }
 
 /* --- ITEMS / COMIDA --- */
@@ -66,29 +95,31 @@
   align-items: center;
   gap: 6px;
   padding: 6px 12px;
-  /* Fondo muy sutil basado en el color primario */
-  background: rgba(255, 107, 107, 0.06);
-  border-radius: 100px;
+  background: #ffdd59; /* Fondo Amarillo sólido */
+  border: 2px solid #1a1a1a; /* Borde negro */
+  border-radius: 50px;
   font-size: 13px;
-  font-weight: 600;
-  color: #e05d5d;
+  font-weight: 700;
+  color: #1a1a1a;
+  box-shadow: 2px 2px 0px #1a1a1a; /* Mini sombra dura */
 }
 
 .category-dot {
-  width: 6px;
-  height: 6px;
-  background-color: #ff8e53; /* Punto naranja vibrante */
-  border-radius: 50%;
+  display: none; /* Ya no necesitamos el puntito, el color del pill es suficiente */
 }
 
 /* --- TEXTO RESEÑA --- */
 .review-text {
-  font-family: "Inter", sans-serif;
+  font-family: "Fredoka", sans-serif;
   font-size: 15px;
-  line-height: 1.6;
-  color: #4b5563;
+  line-height: 1.5;
+  color: #1a1a1a;
   margin: 0 0 20px 0;
-  font-style: italic; /* Toque editorial */
+  background: #fff;
+  padding: 12px;
+  border: 2px dashed #ccc; /* Estilo libreta */
+  border-radius: 8px;
+  font-style: normal;
 }
 
 /* --- FOOTER / METADATA --- */
@@ -97,37 +128,39 @@
   align-items: center;
   gap: 12px;
   padding-top: 16px;
-  border-top: 1px dashed rgba(0, 0, 0, 0.06); /* Línea punteada moderna */
+  border-top: 3px solid #1a1a1a; /* Línea separadora gruesa */
 }
 
 .meta-tag {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 13px;
-  font-weight: 600;
-  padding: 4px 10px;
+  font-size: 14px;
+  font-weight: 700;
+  padding: 6px 12px;
   border-radius: 8px;
+  border: 2px solid #1a1a1a;
+  color: #1a1a1a;
 }
 
 /* Estilo específico para precio */
 .price-tag {
-  color: #10b981; /* Verde esmeralda moderno */
-  background: rgba(16, 185, 129, 0.08);
+  background: #00d2d3; /* Verde agua pop */
+  box-shadow: 2px 2px 0px #1a1a1a;
 }
 
 /* Estilo específico para fecha */
 .date-tag {
-  color: #6b7280;
-  background: #f3f4f6;
-  margin-left: auto; /* Empuja la fecha a la derecha */
+  background: #ffffff;
+  margin-left: auto;
+  box-shadow: 2px 2px 0px #1a1a1a;
 }
 
 /* --- RESPONSIVE --- */
 @media (max-width: 480px) {
   .review-card {
-    padding: 20px;
-    border-radius: 20px;
+    padding: 16px;
+    box-shadow: 4px 4px 0px #1a1a1a;
   }
 
   .review-place {

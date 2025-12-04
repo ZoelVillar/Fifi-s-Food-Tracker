@@ -1,10 +1,10 @@
 import { motion } from "framer-motion";
-import { MapPin, DollarSign, Calendar, Tag } from "lucide-react";
+import { MapPin, DollarSign, Calendar } from "lucide-react";
 import StarRating from "./StarRating";
 import "./ReviewCard.css";
 
 const ReviewCard = ({ review, index }) => {
-  // Formateador de fecha profesional
+  // Formateador de fecha
   const formatDate = (timestamp) => {
     if (!timestamp) return "";
     const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
@@ -14,27 +14,31 @@ const ReviewCard = ({ review, index }) => {
     }).format(date); // Ej: 14 dic.
   };
 
-  // Formateador de precio moneda
+  // Formateador de precio
   const formatPrice = (price) => {
     return new Intl.NumberFormat("es-AR", {
       style: "currency",
       currency: "ARS",
-      maximumFractionDigits: 0, // Sin decimales si son números redondos grandes
+      maximumFractionDigits: 0,
     }).format(price);
   };
 
   return (
     <motion.div
       className="review-card"
-      initial={{ opacity: 0, y: 20, scale: 0.98 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
+      initial={{ opacity: 0, y: 20, rotate: -1 }} // Empieza un poco chueca
+      animate={{ opacity: 1, y: 0, rotate: 0 }}
       transition={{
-        duration: 0.5,
+        duration: 0.4,
         delay: index * 0.1,
         type: "spring",
-        stiffness: 100,
+        stiffness: 120,
       }}
-      whileHover={{ y: -4, transition: { duration: 0.2 } }}
+      whileHover={{
+        scale: 1.02,
+        rotate: 1,
+        transition: { duration: 0.2 },
+      }}
     >
       {/* Header de la Card: Título y Estrellas */}
       <div className="card-top">
@@ -42,22 +46,22 @@ const ReviewCard = ({ review, index }) => {
           <h3 className="review-place">{review.placeName}</h3>
           {review.location && (
             <div className="location-badge">
-              <MapPin size={14} strokeWidth={2.5} />
+              <MapPin size={14} strokeWidth={3} />
               <span>{review.location}</span>
             </div>
           )}
         </div>
+        {/* Rating wrapper ahora maneja el layout de las estrellas */}
         <div className="rating-wrapper">
-          <StarRating rating={review.rating} interactive={false} size={18} />
+          <StarRating rating={review.rating} interactive={false} size={20} />
         </div>
       </div>
 
-      {/* Cuerpo: Items pedidos (Lo más importante visualmente después del título) */}
+      {/* Cuerpo: Items pedidos (Pills estilo sticker) */}
       {review.items && review.items.length > 0 && (
         <div className="items-container">
           {review.items.map((item, idx) => (
             <span key={idx} className="item-pill">
-              <span className="category-dot"></span>
               {item.name}
             </span>
           ))}
@@ -73,14 +77,14 @@ const ReviewCard = ({ review, index }) => {
       <div className="card-footer">
         {review.price > 0 && (
           <div className="meta-tag price-tag">
-            <DollarSign size={14} />
+            <DollarSign size={16} strokeWidth={3} />
             <span>{formatPrice(review.price)}</span>
           </div>
         )}
 
         {review.timestamp && (
           <div className="meta-tag date-tag">
-            <Calendar size={14} />
+            <Calendar size={16} strokeWidth={3} />
             <span>{formatDate(review.timestamp)}</span>
           </div>
         )}

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import PopSelect from "./PopSelect";
 import {
   Plus,
   X,
@@ -28,7 +29,6 @@ const ReviewForm = ({ onSaveSuccess }) => {
   const [loading, setLoading] = useState(false);
   const [newItem, setNewItem] = useState({ name: "", category: "" });
 
-  // Manejadores de estado (sin cambios en la lógica, solo en UI)
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -54,8 +54,7 @@ const ReviewForm = ({ onSaveSuccess }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.placeName || formData.rating === 0) {
-      // Usamos un modal o toast en una app real, aquí un alert limpio
-      alert("Por favor completa el nombre y el puntaje.");
+      alert("¡Oye! Falta el nombre del lugar o el puntaje.");
       return;
     }
 
@@ -85,7 +84,7 @@ const ReviewForm = ({ onSaveSuccess }) => {
       if (onSaveSuccess) onSaveSuccess();
     } catch (error) {
       console.error("Error:", error);
-      alert("Error al guardar.");
+      alert("Ups, error al guardar.");
     } finally {
       setLoading(false);
     }
@@ -105,7 +104,7 @@ const ReviewForm = ({ onSaveSuccess }) => {
           <div className="input-group full-width">
             <label>Lugar</label>
             <div className="input-wrapper">
-              <Store className="input-icon" size={18} />
+              <Store className="input-icon" size={20} strokeWidth={3} />
               <input
                 type="text"
                 name="placeName"
@@ -122,7 +121,7 @@ const ReviewForm = ({ onSaveSuccess }) => {
           <div className="input-group">
             <label>Ubicación</label>
             <div className="input-wrapper">
-              <MapPin className="input-icon" size={18} />
+              <MapPin className="input-icon" size={20} strokeWidth={3} />
               <input
                 type="text"
                 name="location"
@@ -138,13 +137,13 @@ const ReviewForm = ({ onSaveSuccess }) => {
           <div className="input-group">
             <label>Precio Total</label>
             <div className="input-wrapper">
-              <DollarSign className="input-icon" size={18} />
+              <DollarSign className="input-icon" size={20} strokeWidth={3} />
               <input
                 type="number"
                 name="price"
                 value={formData.price}
                 onChange={handleInputChange}
-                placeholder="0.00"
+                placeholder="0"
                 min="0"
                 step="0.01"
                 className="modern-input"
@@ -152,31 +151,23 @@ const ReviewForm = ({ onSaveSuccess }) => {
             </div>
           </div>
         </div>
-
         {/* --- SECCIÓN COMIDA (ITEMS) --- */}
-        <div className="form-section items-section">
-          <label className="section-label">¿Qué pidieron?</label>
+        <div className="items-section">
+          <label className="section-label">¿QUÉ PIDIERON?</label>
 
           <div className="add-item-box">
             <div className="select-wrapper">
-              <select
+              <PopSelect
+                options={CATEGORIES}
                 value={newItem.category}
-                onChange={(e) =>
-                  setNewItem((prev) => ({ ...prev, category: e.target.value }))
+                onChange={(val) =>
+                  setNewItem((prev) => ({ ...prev, category: val }))
                 }
-                className="modern-select"
-              >
-                <option value="">Categoría...</option>
-                {CATEGORIES.map((cat) => (
-                  <option key={cat} value={cat}>
-                    {cat}
-                  </option>
-                ))}
-              </select>
+                placeholder="Categoría..."
+              />
             </div>
-
             <div className="input-wrapper item-input-wrapper">
-              <Utensils className="input-icon" size={16} />
+              <Utensils className="input-icon" size={18} strokeWidth={3} />
               <input
                 type="text"
                 value={newItem.name}
@@ -196,8 +187,9 @@ const ReviewForm = ({ onSaveSuccess }) => {
               className="add-btn"
               onClick={handleAddItem}
               disabled={!newItem.name || !newItem.category}
+              title="Agregar Item"
             >
-              <Plus size={20} />
+              <Plus size={24} strokeWidth={4} />
             </button>
           </div>
 
@@ -207,8 +199,8 @@ const ReviewForm = ({ onSaveSuccess }) => {
               {formData.items.map((item, index) => (
                 <motion.div
                   key={`${item.name}-${index}`}
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
+                  initial={{ opacity: 0, scale: 0.8, rotate: -5 }}
+                  animate={{ opacity: 1, scale: 1, rotate: 0 }}
                   exit={{ opacity: 0, scale: 0.5 }}
                   className="item-chip"
                 >
@@ -219,17 +211,21 @@ const ReviewForm = ({ onSaveSuccess }) => {
                     onClick={() => handleRemoveItem(index)}
                     className="chip-remove"
                   >
-                    <X size={14} />
+                    <X size={16} strokeWidth={3} />
                   </button>
                 </motion.div>
               ))}
             </AnimatePresence>
           </div>
         </div>
-
         {/* --- SECCIÓN PUNTAJE Y RESEÑA --- */}
-        <div className="form-section rating-section">
-          <label className="section-label centered">Tu Veredicto</label>
+        <div className="rating-section">
+          <label
+            className="section-label centered"
+            style={{ color: "#1a1a1a", textShadow: "none" }}
+          >
+            TU VEREDICTO
+          </label>
           <div className="rating-container">
             <StarRating
               rating={formData.rating}
@@ -237,14 +233,17 @@ const ReviewForm = ({ onSaveSuccess }) => {
                 setFormData((prev) => ({ ...prev, rating: r }))
               }
               interactive={true}
-              size={32} // Estrellas más grandes
+              size={36}
             />
           </div>
         </div>
-
         <div className="input-group">
           <div className="input-wrapper textarea-wrapper">
-            <MessageSquare className="input-icon text-icon" size={18} />
+            <MessageSquare
+              className="input-icon text-icon"
+              size={20}
+              strokeWidth={3}
+            />
             <textarea
               name="reviewText"
               value={formData.reviewText}
@@ -255,23 +254,18 @@ const ReviewForm = ({ onSaveSuccess }) => {
             />
           </div>
         </div>
-
         {/* --- BOTÓN SUBMIT --- */}
         <motion.button
           type="submit"
           className="submit-btn-large"
           disabled={loading}
-          whileHover={{
-            scale: 1.02,
-            boxShadow: "0 10px 25px rgba(255, 107, 107, 0.4)",
-          }}
           whileTap={{ scale: 0.98 }}
         >
           {loading ? (
             "Guardando..."
           ) : (
             <>
-              <Save size={20} />
+              <Save size={24} strokeWidth={3} />
               <span>Guardar Reseña</span>
             </>
           )}
