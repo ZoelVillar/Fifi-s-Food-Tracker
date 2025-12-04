@@ -90,3 +90,31 @@
   min-width: 40px;
   text-align: center;
 }
+
+/* --- RESPONSIVE PARA MÓVIL --- */
+@media (max-width: 480px) {
+  /* Solo afectamos a las estrellas interactivas (las del formulario) */
+  .star-rating-container.interactive {
+    gap: 2px; /* Juntarlas un poco más */
+  }
+
+  .star-rating-container.interactive .star-wrapper {
+    /* Forzamos un tamaño más pequeño (28px en vez de 36px) */
+    width: 28px !important;
+    height: 28px !important;
+  }
+
+  /* Forzamos a los iconos SVG a respetar el nuevo tamaño */
+  .star-rating-container.interactive .star-wrapper svg {
+    width: 28px !important;
+    height: 28px !important;
+  }
+
+  /* Ajustamos el badge del número para que no quede gigante */
+  .interactive .rating-number {
+    font-size: 16px;
+    padding: 2px 6px;
+    margin-left: 6px;
+    min-width: 32px;
+  }
+}
