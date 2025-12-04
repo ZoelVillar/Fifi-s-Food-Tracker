@@ -190,6 +190,7 @@ const Stats = ({ onBack }) => {
       daysMap[date.getDay()] += 1;
 
       // Rating Distribution
+      // Lógica de redondeo: Math.round cumple exactamente tu ejemplo (4.4 -> 4, 4.7 -> 5)
       const roundedRating = Math.round(r.rating || 0);
       if (roundedRating >= 1 && roundedRating <= 5)
         ratingMap[roundedRating] += 1;
@@ -222,14 +223,16 @@ const Stats = ({ onBack }) => {
     const dayOfWeekChart = Object.entries(daysMap).map(([dayIndex, count]) => ({
       name: dayNamesChart[dayIndex],
       count,
-      fullMark: 100, // Para radar chart visual
+      fullMark: 100,
     }));
 
-    // Formatear Ratings
-    const ratingChart = Object.entries(ratingMap).map(([stars, count]) => ({
-      name: stars + "★",
-      count,
-    }));
+    // Formatear Ratings (CAMBIO AQUÍ: .reverse() para que el 5 quede arriba)
+    const ratingChart = Object.entries(ratingMap)
+      .map(([stars, count]) => ({
+        name: stars + "★",
+        count,
+      }))
+      .reverse(); // <--- ESTO INVIERTE EL ORDEN (5, 4, 3, 2, 1)
 
     // Top Places
     const topPlaces = Object.entries(placeCount)
