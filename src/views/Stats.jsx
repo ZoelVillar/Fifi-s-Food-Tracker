@@ -9,6 +9,9 @@ import {
   Utensils,
   Award,
   AlertCircle,
+  PieChart as PieIcon,
+  ScatterChart as ScatterIcon,
+  BarChart as BarChartIcon,
 } from "lucide-react";
 import Header from "../components/Header";
 import { getAllReviews } from "../services/firestoreService";
@@ -24,8 +27,24 @@ import {
   BarChart,
   Bar,
   Cell,
+  PieChart,
+  Pie,
+  ScatterChart,
+  Scatter,
+  ZAxis,
 } from "recharts";
 import "./Stats.css";
+
+// Paleta de colores para gráficos (Estilo Pop)
+const COLORS = [
+  "#0fbcf9",
+  "#ffdd59",
+  "#ff5e57",
+  "#00d2d3",
+  "#a55eea",
+  "#ff9f43",
+  "#ff9ff3",
+];
 
 const Stats = ({ onBack }) => {
   const [reviews, setReviews] = useState([]);
@@ -33,13 +52,10 @@ const Stats = ({ onBack }) => {
 
   // --- ESTADOS DE LA UI ---
   const [activeTab, setActiveTab] = useState("month"); // 'month' | 'history'
-
-  // Filtros
   const [selectedCategory, setSelectedCategory] = useState("Todas");
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
 
-  // Carga de datos
   useEffect(() => {
     const loadData = async () => {
       try {
@@ -54,9 +70,9 @@ const Stats = ({ onBack }) => {
     loadData();
   }, []);
 
-  // --- LÓGICA DE FILTRADO Y PROCESAMIENTO ---
+  // --- LÓGICA DE DATOS ---
 
-  // 1. Base filtrada por Categoría (Aplica a ambas pestañas)
+  // 1. Filtro base
   const categoryFilteredReviews = useMemo(() => {
     if (selectedCategory === "Todas") return reviews;
     return reviews.filter((r) =>
@@ -64,7 +80,7 @@ const Stats = ({ onBack }) => {
     );
   }, [reviews, selectedCategory]);
 
-  // 2. Datos para la pestaña MES (Filtra por fecha + categoría)
+  // 2. Datos MENSUALES
   const monthData = useMemo(() => {
     const filtered = categoryFilteredReviews.filter((r) => {
       if (!r.timestamp) return false;
@@ -87,77 +103,128 @@ const Stats = ({ onBack }) => {
           filtered.length
         : 0;
 
+    // A. Distribución de Categorías (Solo si estamos viendo "Todas")
+    let categoryPieData = [];
+    if (selectedCategory === "Todas") {
+      const catCount = {};
+      filtered.forEach((r) => {
+        r.items?.forEach((item) => {
+          catCount[item.category] = (catCount[item.category] || 0) + 1;
+        });
+      });
+      categoryPieData = Object.entries(catCount)
+        .map(([name, value]) => ({ name, value }))
+        .sort((a, b) => b.value - a.value)
+        .slice(0, 6); // Top 6 para no saturar
+    }
+
     return {
       reviews: filtered,
       count: filtered.length,
       totalSpent,
       avgRating,
+      categoryPieData,
     };
-  }, [categoryFilteredReviews, selectedMonth, selectedYear]);
+  }, [categoryFilteredReviews, selectedMonth, selectedYear, selectedCategory]);
 
-  // 3. Datos para la pestaña HISTÓRICO
+  // 3. Datos HISTÓRICOS (Avanzados)
   const historyData = useMemo(() => {
-    // A. Gráfico de Tendencia (Mensual)
+    // A. Tendencia
     const trendMap = {};
+    // B. Día de la Semana
+    const daysMap = { 0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 }; // 0=Domingo
+    const dayNames = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
+    // C. Distribución de Ratings
+    const ratingMap = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+    // D. Scatter (Precio vs Rating)
+    const scatterPoints = [];
+
+    // E. Total y Extremos
+    let totalSpentHistory = 0;
+    const placeCount = {};
+
     categoryFilteredReviews.forEach((r) => {
+      // Precio y Totales
+      const price = r.price || 0;
+      totalSpentHistory += price;
+
       if (!r.timestamp) return;
       const date = r.timestamp.toDate
         ? r.timestamp.toDate()
         : new Date(r.timestamp);
+
+      // Tendencia
       const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(
         2,
         "0"
       )}`;
-
-      // Si filtramos por categoría, contamos items, si no, contamos salidas
       let valueToAdd = 1;
       if (selectedCategory !== "Todas") {
-        // Contar cuantos items de esa categoria hubo en la salida
         valueToAdd = r.items.filter(
           (i) => i.category === selectedCategory
         ).length;
       }
-
       trendMap[key] = (trendMap[key] || 0) + valueToAdd;
+
+      // Día de la Semana
+      daysMap[date.getDay()] += 1;
+
+      // Rating Distribution
+      const roundedRating = Math.round(r.rating || 0);
+      if (roundedRating >= 1 && roundedRating <= 5)
+        ratingMap[roundedRating] += 1;
+
+      // Scatter Plot Data (Solo si tiene precio y rating)
+      if (price > 0 && r.rating > 0) {
+        scatterPoints.push({
+          x: price,
+          y: r.rating,
+          z: 10, // Tamaño del punto
+          name: r.placeName || "Lugar",
+        });
+      }
+
+      // Top Places
+      if (r.placeName)
+        placeCount[r.placeName] = (placeCount[r.placeName] || 0) + 1;
     });
 
+    // Formatear Tendencia
     const trendChart = Object.entries(trendMap)
       .map(([date, count]) => ({
-        name: date, // YYYY-MM
+        name: date,
         shortName: date.split("-")[1] + "/" + date.split("-")[0].slice(2),
         count,
       }))
       .sort((a, b) => a.name.localeCompare(b.name));
 
-    // B. Total Gastado Histórico
-    const totalSpentHistory = categoryFilteredReviews.reduce(
-      (acc, curr) => acc + (curr.price || 0),
-      0
-    );
+    // Formatear Días Semana
+    const dayOfWeekChart = Object.entries(daysMap).map(([dayIndex, count]) => ({
+      name: dayNames[dayIndex],
+      count,
+      fullMark: 100, // Para radar chart visual
+    }));
 
-    // C. Top Lugares (Ponderado por cantidad de visitas)
-    const placeCount = {};
-    categoryFilteredReviews.forEach((r) => {
-      if (!r.placeName) return;
-      placeCount[r.placeName] = (placeCount[r.placeName] || 0) + 1;
-    });
+    // Formatear Ratings
+    const ratingChart = Object.entries(ratingMap).map(([stars, count]) => ({
+      name: stars + "★",
+      count,
+    }));
 
+    // Top Places
     const topPlaces = Object.entries(placeCount)
       .map(([name, count]) => ({ name, count }))
       .sort((a, b) => b.count - a.count)
       .slice(0, 5);
 
-    // D. Más Cara y Más Barata
+    // Extremos
     let mostExpensive = null;
     let cheapest = null;
-
     if (categoryFilteredReviews.length > 0) {
-      // Ordenar por precio
       const sortedByPrice = [...categoryFilteredReviews].sort(
         (a, b) => b.price - a.price
       );
       mostExpensive = sortedByPrice[0];
-      // Para la más barata, ignoramos precio 0 si existe (invitaciones)
       const withPrice = sortedByPrice.filter((r) => r.price > 0);
       cheapest = withPrice[withPrice.length - 1];
     }
@@ -169,10 +236,12 @@ const Stats = ({ onBack }) => {
       mostExpensive,
       cheapest,
       totalCount: categoryFilteredReviews.length,
+      dayOfWeekChart,
+      ratingChart,
+      scatterPoints,
     };
   }, [categoryFilteredReviews, selectedCategory]);
 
-  // --- HELPERS ---
   const formatMoney = (amount) =>
     new Intl.NumberFormat("es-AR", {
       style: "currency",
@@ -180,10 +249,33 @@ const Stats = ({ onBack }) => {
       maximumFractionDigits: 0,
     }).format(amount);
 
+  // Custom Tooltip para el Scatter Plot
+  const CustomScatterTooltip = ({ active, payload }) => {
+    if (active && payload && payload.length) {
+      const data = payload[0].payload;
+      return (
+        <div
+          style={{
+            background: "#fff",
+            border: "3px solid #1a1a1a",
+            padding: "10px",
+            borderRadius: "8px",
+            boxShadow: "4px 4px 0 #1a1a1a",
+          }}
+        >
+          <p style={{ fontWeight: "bold", margin: 0 }}>{data.name}</p>
+          <p style={{ margin: 0 }}>Precio: {formatMoney(data.x)}</p>
+          <p style={{ margin: 0 }}>Rating: {data.y} ★</p>
+        </div>
+      );
+    }
+    return null;
+  };
+
   if (loading)
     return (
       <div className="stats-view">
-        <div className="loading-state">Cargando datos...</div>
+        <div className="loading-state">Calculando datos... 🧮</div>
       </div>
     );
 
@@ -207,10 +299,10 @@ const Stats = ({ onBack }) => {
           initial={{ y: -20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
         >
-          ANALIZAME ESTA !!! 💥
+          ANÁLISIS POP 💥
         </motion.h1>
 
-        {/* --- BARRA DE FILTROS --- */}
+        {/* --- FILTROS --- */}
         <div className="filters-bar">
           <div className="filter-group">
             <span className="filter-label">Categoría</span>
@@ -227,8 +319,6 @@ const Stats = ({ onBack }) => {
               ))}
             </select>
           </div>
-
-          {/* Filtros de fecha solo visibles en tab Mensual */}
           {activeTab === "month" && (
             <>
               <div className="filter-group">
@@ -247,7 +337,6 @@ const Stats = ({ onBack }) => {
                   ))}
                 </select>
               </div>
-
               <div className="filter-group">
                 <span className="filter-label">Año</span>
                 <select
@@ -279,35 +368,34 @@ const Stats = ({ onBack }) => {
           </button>
         </div>
 
-        {/* --- CONTENIDO PESTAÑA: MENSUAL --- */}
+        {/* --- PESTAÑA: MENSUAL --- */}
         {activeTab === "month" && (
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.3 }}
           >
+            {/* 1. KPIs */}
             <div className="kpi-grid">
               <div className="kpi-box" style={{ background: "#daf5ff" }}>
                 <div className="icon-stamp" style={{ background: "#0fbcf9" }}>
-                  <Utensils color="white" size={20} strokeWidth={3} />
+                  <Utensils color="white" size={20} />
                 </div>
                 <div className="kpi-value">{monthData.count}</div>
                 <div className="kpi-label">Salidas</div>
               </div>
-
               <div className="kpi-box" style={{ background: "#fff5da" }}>
                 <div className="icon-stamp" style={{ background: "#ffdd59" }}>
-                  <DollarSign color="black" size={20} strokeWidth={3} />
+                  <DollarSign color="black" size={20} />
                 </div>
                 <div className="kpi-value">
                   {formatMoney(monthData.totalSpent)}
                 </div>
                 <div className="kpi-label">Gastado</div>
               </div>
-
               <div className="kpi-box" style={{ background: "#ffdada" }}>
                 <div className="icon-stamp" style={{ background: "#ff5e57" }}>
-                  <Award color="white" size={20} strokeWidth={3} />
+                  <Award color="white" size={20} />
                 </div>
                 <div className="kpi-value">
                   {monthData.avgRating.toFixed(1)}
@@ -316,26 +404,86 @@ const Stats = ({ onBack }) => {
               </div>
             </div>
 
+            {/* 2. GRÁFICO DE TORTA (Solo si hay datos y cat=Todas) */}
+            {monthData.count > 0 &&
+              selectedCategory === "Todas" &&
+              monthData.categoryPieData.length > 0 && (
+                <div className="pop-card orange">
+                  <div className="card-title">
+                    <PieIcon size={24} strokeWidth={3} /> Dieta Mensual
+                  </div>
+                  <div className="chart-container" style={{ height: 300 }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={monthData.categoryPieData}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={60}
+                          outerRadius={100}
+                          paddingAngle={5}
+                          dataKey="value"
+                        >
+                          {monthData.categoryPieData.map((entry, index) => (
+                            <Cell
+                              key={`cell-${index}`}
+                              fill={COLORS[index % COLORS.length]}
+                              stroke="#1a1a1a"
+                              strokeWidth={2}
+                            />
+                          ))}
+                        </Pie>
+                        <Tooltip
+                          contentStyle={{
+                            border: "3px solid black",
+                            borderRadius: "8px",
+                            fontFamily: "Fredoka",
+                          }}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                  {/* Leyenda Manual Estilo Pop */}
+                  <div className="custom-legend">
+                    {monthData.categoryPieData.map((entry, index) => (
+                      <div
+                        key={index}
+                        className="legend-pill"
+                        style={{
+                          background: COLORS[index % COLORS.length] + "40",
+                        }}
+                      >
+                        <div
+                          className="legend-dot"
+                          style={{ background: COLORS[index % COLORS.length] }}
+                        />
+                        {entry.name} ({entry.value})
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
             {monthData.count === 0 && (
               <div className="empty-msg">
-                No hay registros para este mes y categoría. 😴
+                No hay registros para este mes. 😴
               </div>
             )}
           </motion.div>
         )}
 
-        {/* --- CONTENIDO PESTAÑA: HISTÓRICO --- */}
+        {/* --- PESTAÑA: HISTÓRICO --- */}
         {activeTab === "history" && (
           <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.3 }}
           >
-            {/* KPI TOTAL HISTÓRICO */}
+            {/* KPI TOTAL */}
             <div className="pop-card yellow">
               <div className="card-title">
-                <TrendingUp size={24} strokeWidth={3} />
-                Total Histórico ({selectedCategory})
+                <TrendingUp size={24} strokeWidth={3} /> Total Histórico (
+                {selectedCategory})
               </div>
               <div
                 style={{
@@ -388,23 +536,25 @@ const Stats = ({ onBack }) => {
               </div>
             </div>
 
-            {/* GRÁFICO DE TENDENCIA */}
+            {/* GRÁFICO 1: TENDENCIA (Línea) */}
             <div className="pop-card blue">
               <div className="card-title">
-                <Calendar size={24} strokeWidth={3} />
-                Evolución{" "}
-                {selectedCategory === "Todas" ? "Salidas" : selectedCategory}
+                <Calendar size={24} strokeWidth={3} /> Tendencia de Salidas
               </div>
-              <div style={{ height: 300, width: "100%" }}>
-                <ResponsiveContainer>
+              <div className="chart-container">
+                <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={historyData.trendChart}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
                     <XAxis
                       dataKey="shortName"
                       stroke="#1a1a1a"
-                      tick={{ fontFamily: "Fredoka", fontWeight: 600 }}
+                      tick={{ fontFamily: "Fredoka", fontSize: 12 }}
                     />
-                    <YAxis stroke="#1a1a1a" tick={{ fontFamily: "Fredoka" }} />
+                    <YAxis
+                      stroke="#1a1a1a"
+                      tick={{ fontFamily: "Fredoka", fontSize: 12 }}
+                      width={30}
+                    />
                     <Tooltip
                       contentStyle={{
                         border: "3px solid black",
@@ -431,6 +581,60 @@ const Stats = ({ onBack }) => {
               </div>
             </div>
 
+            {/* GRÁFICO 2: PRECIO VS CALIDAD (Scatter) */}
+            {historyData.scatterPoints.length > 2 && (
+              <div className="pop-card pink">
+                <div className="card-title">
+                  <ScatterIcon size={24} strokeWidth={3} /> Precio vs. Calidad
+                </div>
+                <p
+                  style={{
+                    fontSize: "13px",
+                    fontStyle: "italic",
+                    marginBottom: "10px",
+                  }}
+                >
+                  ¿Pagas más por mejor comida? (Arriba a la izq: Bueno y Barato)
+                </p>
+                <div className="chart-container">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <ScatterChart
+                      margin={{ top: 20, right: 20, bottom: 20, left: 0 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis
+                        type="number"
+                        dataKey="x"
+                        name="Precio"
+                        unit="$"
+                        stroke="#1a1a1a"
+                        tickFormatter={(val) => `$${val}`}
+                      />
+                      <YAxis
+                        type="number"
+                        dataKey="y"
+                        name="Rating"
+                        unit="★"
+                        stroke="#1a1a1a"
+                        domain={[1, 5]}
+                      />
+                      <ZAxis type="number" dataKey="z" range={[60, 400]} />{" "}
+                      {/* Tamaño de burbujas */}
+                      <Tooltip content={<CustomScatterTooltip />} />
+                      <Scatter
+                        name="Lugares"
+                        data={historyData.scatterPoints}
+                        fill="#ff5e57"
+                        shape="circle"
+                        stroke="#1a1a1a"
+                        strokeWidth={2}
+                      />
+                    </ScatterChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            )}
+
             <div
               style={{
                 display: "grid",
@@ -438,11 +642,98 @@ const Stats = ({ onBack }) => {
                 gap: "20px",
               }}
             >
-              {/* TOP PLACES */}
+              {/* GRÁFICO 3: DÍAS DE LA SEMANA (Barras) */}
+              <div className="pop-card cyan">
+                <div className="card-title">
+                  <BarChartIcon size={24} strokeWidth={3} /> Ritmo Semanal
+                </div>
+                <div className="chart-container" style={{ height: 200 }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={historyData.dayOfWeekChart}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                      <XAxis
+                        dataKey="name"
+                        stroke="#1a1a1a"
+                        tick={{ fontSize: 12, fontWeight: 700 }}
+                      />
+                      <Tooltip
+                        cursor={{ fill: "rgba(0,0,0,0.05)" }}
+                        contentStyle={{
+                          border: "3px solid black",
+                          borderRadius: "8px",
+                          fontFamily: "Fredoka",
+                        }}
+                      />
+                      <Bar
+                        dataKey="count"
+                        fill="#00d2d3"
+                        radius={[4, 4, 0, 0]}
+                        stroke="#1a1a1a"
+                        strokeWidth={2}
+                      >
+                        {historyData.dayOfWeekChart.map((entry, index) => (
+                          <Cell
+                            key={`cell-${index}`}
+                            fill={entry.count > 0 ? "#00d2d3" : "#e0e0e0"}
+                          />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              {/* GRÁFICO 4: DISTRIBUCIÓN DE RATING */}
               <div className="pop-card purple">
                 <div className="card-title">
-                  <Trophy size={24} strokeWidth={3} />
-                  Top {selectedCategory}
+                  <Award size={24} strokeWidth={3} /> Tus Veredictos
+                </div>
+                <div className="chart-container" style={{ height: 200 }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={historyData.ratingChart} layout="vertical">
+                      <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                      <XAxis type="number" stroke="#1a1a1a" hide />
+                      <YAxis
+                        dataKey="name"
+                        type="category"
+                        stroke="#1a1a1a"
+                        width={40}
+                        tick={{ fontWeight: "bold" }}
+                      />
+                      <Tooltip
+                        cursor={{ fill: "rgba(0,0,0,0.05)" }}
+                        contentStyle={{
+                          border: "3px solid black",
+                          borderRadius: "8px",
+                          fontFamily: "Fredoka",
+                        }}
+                      />
+                      <Bar
+                        dataKey="count"
+                        fill="#a55eea"
+                        radius={[0, 4, 4, 0]}
+                        stroke="#1a1a1a"
+                        strokeWidth={2}
+                        barSize={20}
+                      ></Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            </div>
+
+            {/* TOP PLACES Y EXTREMOS (Igual que antes pero reordenado) */}
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
+                gap: "20px",
+                marginTop: "20px",
+              }}
+            >
+              <div className="pop-card orange">
+                <div className="card-title">
+                  <Trophy size={24} strokeWidth={3} /> Top {selectedCategory}
                 </div>
                 {historyData.topPlaces.length > 0 ? (
                   <ul className="top-list">
@@ -461,11 +752,9 @@ const Stats = ({ onBack }) => {
                 )}
               </div>
 
-              {/* EXTREMOS (CARO / BARATO) */}
               <div className="pop-card green">
                 <div className="card-title">
-                  <AlertCircle size={24} strokeWidth={3} />
-                  Extremos
+                  <AlertCircle size={24} strokeWidth={3} /> Extremos
                 </div>
                 <div className="extremes-grid">
                   <div className="extreme-item">

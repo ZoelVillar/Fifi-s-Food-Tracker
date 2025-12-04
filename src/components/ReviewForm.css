@@ -13,7 +13,6 @@
   box-shadow: 8px 8px 0px #1a1a1a;
   position: relative;
   /* Decoración: patrón de puntos sutil en el fondo */
-  background-image: radial-gradient(#1a1a1a 1px, transparent 1px);
   background-size: 20px 20px;
   background-color: #fff;
 }

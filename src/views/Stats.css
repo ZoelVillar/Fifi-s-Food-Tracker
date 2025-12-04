@@ -330,3 +330,54 @@
     font-size: 36px;
   }
 }
+/* Nuevos colores de tarjetas */
+.pop-card.orange {
+  border-bottom: 8px solid #ff9f43;
+}
+.pop-card.pink {
+  border-bottom: 8px solid #ff9ff3;
+}
+.pop-card.cyan {
+  border-bottom: 8px solid #00d2d3;
+}
+
+/* Ajustes para gráficos en móvil */
+.chart-container {
+  height: 300px;
+  width: 100%;
+  position: relative;
+  z-index: 10;
+}
+
+/* Tooltips personalizados de Recharts suelen necesitar esto para no quedar escondidos */
+.recharts-tooltip-wrapper {
+  z-index: 1000;
+}
+
+/* Leyendas custom para móvil (Pills) */
+.custom-legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.legend-pill {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 4px 8px;
+  border-radius: 4px;
+  color: #1a1a1a;
+  border: 2px solid #1a1a1a;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1px solid #1a1a1a;
+}

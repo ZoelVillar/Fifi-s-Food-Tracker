@@ -3,7 +3,7 @@
   min-height: 100vh;
   /* Fondo Blanco con patrón de puntos negros (Estilo Cómic) */
   background-color: #f1f1f1;
-  background-image: radial-gradient(#1a1a1a 2px, transparent 1px);
+  background-image: radial-gradient(#1a1a1a 1.5px, transparent 1px);
   background-size: 24px 24px; /* Puntos un poco más grandes */
   padding-bottom: 60px;
   font-family: "Fredoka", sans-serif;
