@@ -311,7 +311,7 @@ const Stats = ({ onBack }) => {
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
             >
-              <option value="Todas">🍔 Todas</option>
+              <option value="Todas">Todas</option>
               {CATEGORIES.map((cat) => (
                 <option key={cat} value={cat}>
                   {cat}
