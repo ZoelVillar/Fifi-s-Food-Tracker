@@ -1,0 +1,82 @@
+.star-rating-container {
+  display: flex;
+  align-items: center;
+  gap: 6px; /* Espacio entre estrellas */
+}
+
+.star-wrapper {
+  position: relative;
+  display: inline-block;
+  cursor: default;
+}
+
+.interactive .star-wrapper {
+  cursor: pointer;
+}
+
+/* --- LOGICA DE CLIC (Invisible) --- */
+.click-zone {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  width: 50%;
+  background: transparent;
+  border: none;
+  z-index: 10; /* Encima de todo */
+  cursor: pointer;
+  padding: 0;
+}
+
+.click-zone.left {
+  left: 0;
+}
+.click-zone.right {
+  right: 0;
+}
+
+/* --- ESTILOS DE LA ESTRELLA FONDO --- */
+.star-bg {
+  color: #e5e7eb; /* Gris suave (Tailwind gray-200) */
+  fill: #f3f4f6; /* Relleno muy sutil */
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1;
+}
+
+/* --- ESTILOS DE LA ESTRELLA RELLENO --- */
+.star-fill-mask {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  overflow: hidden; /* Esto hace la magia del recorte */
+  z-index: 2;
+  pointer-events: none; /* Los clics pasan a través de esto */
+}
+
+.star-fg {
+  color: #ffb800; /* Amarillo Ámbar Vibrante */
+  /* Si prefieres el gradiente naranja del header usa: color: #FF8E53; */
+  fill: currentColor;
+  position: absolute;
+  top: 0;
+  left: 0;
+
+  /* Truco: Filtro para dar brillo "Pop" */
+  filter: drop-shadow(0 0 2px rgba(255, 184, 0, 0.4));
+}
+
+/* Efecto Hover en el contenedor general (opcional) */
+.interactive .star-wrapper:hover .star-bg {
+  color: #d1d5db; /* Se oscurece un poco el fondo al pasar el mouse */
+}
+
+/* --- NÚMERO DE PUNTUACIÓN --- */
+.rating-number {
+  margin-left: 8px;
+  font-size: 18px;
+  font-weight: 800;
+  color: #ffb800;
+  min-width: 30px;
+}

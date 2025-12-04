@@ -1,0 +1,54 @@
+.home-view {
+  min-height: 100vh;
+  background: #FAFAFA;
+}
+
+.home-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 16px 32px;
+}
+
+.recent-reviews-section {
+  margin-top: 32px;
+}
+
+.section-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: #1A1A1A;
+  margin-bottom: 20px;
+  padding-left: 4px;
+}
+
+.reviews-list {
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.loading-state,
+.empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: #999;
+  font-size: 16px;
+  background: #FFFFFF;
+  border-radius: 16px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+}
+
+.empty-state p {
+  margin: 0;
+  font-size: 18px;
+}
+
+@media (max-width: 480px) {
+  .home-content {
+    padding: 0 12px 24px;
+  }
+  
+  .section-title {
+    font-size: 20px;
+  }
+}
+

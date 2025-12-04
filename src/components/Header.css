@@ -1,0 +1,123 @@
+/* Variables para fácil ajuste */
+:root {
+  --primary-gradient: linear-gradient(135deg, #ff6b6b 0%, #ff8e53 100%);
+  --glass-bg: rgba(255, 255, 255, 0.85);
+  --glass-border: rgba(255, 255, 255, 0.5);
+  --shadow-color: rgba(255, 107, 107, 0.4);
+}
+
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  /* Efecto Glassmorphism (Vidrio) */
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.header-content {
+  max-width: 1200px; /* Contenedor para que no se estire infinito en desktop */
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+}
+
+/* --- LOGO Y TÍTULO --- */
+.logo-container {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.logo-icon-bg {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background: var(--primary-gradient);
+  border-radius: 12px;
+  box-shadow: 0 4px 10px var(--shadow-color);
+  transform: rotate(-5deg); /* Un toque "juguetón" */
+}
+
+.app-title {
+  font-size: 22px;
+  font-weight: 800; /* Extra bold */
+  color: #1a1a1a;
+  margin: 0;
+  letter-spacing: -0.03em; /* Tighter spacing looks more professional */
+  font-family: "Inter", -apple-system, sans-serif;
+}
+
+.text-gradient {
+  background: var(--primary-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-left: 2px;
+}
+
+/* --- BOTÓN DE ESTADÍSTICAS --- */
+.stats-button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  background: #ffffff;
+  color: #ff6b6b; /* Color del texto igual al primario */
+  border: 2px solid rgba(255, 107, 107, 0.1); /* Borde sutil */
+  border-radius: 100px; /* Pill shape (Pastilla) */
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  /* Sombra suave */
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+.stats-button:hover {
+  background: var(--primary-gradient);
+  color: white;
+  border-color: transparent;
+  box-shadow: 0 8px 20px var(--shadow-color); /* Glow al hacer hover */
+  transform: translateY(-2px);
+}
+
+/* --- RESPONSIVE MOBILE --- */
+@media (max-width: 480px) {
+  .header-content {
+    padding: 14px 16px;
+  }
+
+  .app-title {
+    font-size: 18px;
+  }
+
+  .logo-icon-bg {
+    width: 32px;
+    height: 32px;
+    border-radius: 10px;
+  }
+
+  .logo-icon-bg svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  /* En móvil, convertimos el botón en un círculo perfecto */
+  .stats-button {
+    padding: 0;
+    width: 40px;
+    height: 40px;
+    justify-content: center;
+    border-radius: 50%;
+  }
+
+  .btn-text {
+    display: none;
+  }
+}

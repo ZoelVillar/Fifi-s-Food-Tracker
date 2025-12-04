@@ -1,0 +1,136 @@
+.review-card {
+  background: #ffffff;
+  border-radius: 24px; /* Bordes mucho más redondeados (Modern UI) */
+  padding: 24px;
+  margin-bottom: 20px;
+  position: relative;
+  border: 1px solid rgba(0, 0, 0, 0.04);
+  /* Sombra suave y difusa */
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.05);
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  overflow: hidden;
+}
+
+.review-card:hover {
+  border-color: rgba(255, 107, 107, 0.3); /* Borde sutil al hover */
+  box-shadow: 0 20px 40px -12px rgba(255, 107, 107, 0.15); /* Sombra con color (Pop) */
+}
+
+/* --- SECCIÓN SUPERIOR --- */
+.card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.place-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.review-place {
+  font-size: 20px;
+  font-weight: 800; /* Extra bold */
+  color: #1a1a1a;
+  margin: 0;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+
+.location-badge {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #9ca3af;
+}
+
+.location-badge svg {
+  color: #ff6b6b; /* Icono de mapa en color acento */
+}
+
+/* --- ITEMS / COMIDA --- */
+.items-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.item-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  /* Fondo muy sutil basado en el color primario */
+  background: rgba(255, 107, 107, 0.06);
+  border-radius: 100px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #e05d5d;
+}
+
+.category-dot {
+  width: 6px;
+  height: 6px;
+  background-color: #ff8e53; /* Punto naranja vibrante */
+  border-radius: 50%;
+}
+
+/* --- TEXTO RESEÑA --- */
+.review-text {
+  font-family: "Inter", sans-serif;
+  font-size: 15px;
+  line-height: 1.6;
+  color: #4b5563;
+  margin: 0 0 20px 0;
+  font-style: italic; /* Toque editorial */
+}
+
+/* --- FOOTER / METADATA --- */
+.card-footer {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-top: 16px;
+  border-top: 1px dashed rgba(0, 0, 0, 0.06); /* Línea punteada moderna */
+}
+
+.meta-tag {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 8px;
+}
+
+/* Estilo específico para precio */
+.price-tag {
+  color: #10b981; /* Verde esmeralda moderno */
+  background: rgba(16, 185, 129, 0.08);
+}
+
+/* Estilo específico para fecha */
+.date-tag {
+  color: #6b7280;
+  background: #f3f4f6;
+  margin-left: auto; /* Empuja la fecha a la derecha */
+}
+
+/* --- RESPONSIVE --- */
+@media (max-width: 480px) {
+  .review-card {
+    padding: 20px;
+    border-radius: 20px;
+  }
+
+  .review-place {
+    font-size: 18px;
+  }
+}
