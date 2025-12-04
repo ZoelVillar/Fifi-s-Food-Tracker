@@ -25,3 +25,6 @@ dist-ssr
 
 # Firebase config (contains sensitive data)
 src/config/firebase.js
+
+.env
+.env.local
