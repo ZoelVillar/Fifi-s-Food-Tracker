@@ -4,17 +4,15 @@ import StarRating from "./StarRating";
 import "./ReviewCard.css";
 
 const ReviewCard = ({ review, index }) => {
-  // Formateador de fecha
   const formatDate = (timestamp) => {
     if (!timestamp) return "";
     const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
     return new Intl.DateTimeFormat("es-AR", {
       day: "numeric",
       month: "short",
-    }).format(date); // Ej: 14 dic.
+    }).format(date);
   };
 
-  // Formateador de precio
   const formatPrice = (price) => {
     return new Intl.NumberFormat("es-AR", {
       style: "currency",
@@ -23,10 +21,20 @@ const ReviewCard = ({ review, index }) => {
     }).format(price);
   };
 
+  // Función para abrir Google Maps
+  const handleLocationClick = (e) => {
+    e.stopPropagation(); // Evita que el clic dispare otros eventos de la tarjeta
+    // Esta URL funciona en web y abre la app nativa en móviles
+    const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+      review.location
+    )}`;
+    window.open(url, "_blank", "noopener,noreferrer");
+  };
+
   return (
     <motion.div
       className="review-card"
-      initial={{ opacity: 0, y: 20, rotate: -1 }} // Empieza un poco chueca
+      initial={{ opacity: 0, y: 20, rotate: -1 }}
       animate={{ opacity: 1, y: 0, rotate: 0 }}
       transition={{
         duration: 0.4,
@@ -40,24 +48,38 @@ const ReviewCard = ({ review, index }) => {
         transition: { duration: 0.2 },
       }}
     >
-      {/* Header de la Card: Título y Estrellas */}
       <div className="card-top">
         <div className="place-info">
           <h3 className="review-place">{review.placeName}</h3>
+
+          {/* UBICACIÓN CLICKEABLE */}
           {review.location && (
-            <div className="location-badge">
+            <div
+              className="location-badge"
+              onClick={handleLocationClick}
+              style={{ cursor: "pointer", transition: "transform 0.1s" }}
+              title="Ver en Google Maps"
+            >
               <MapPin size={14} strokeWidth={3} />
-              <span>{review.location}</span>
+              <span
+                style={{
+                  textDecoration: "underline",
+                  textDecorationThickness: "2px",
+                }}
+              >
+                {review.location}
+              </span>
             </div>
           )}
         </div>
-        {/* Rating wrapper ahora maneja el layout de las estrellas */}
+
         <div className="rating-wrapper">
           <StarRating rating={review.rating} interactive={false} size={20} />
         </div>
       </div>
 
-      {/* Cuerpo: Items pedidos (Pills estilo sticker) */}
+      {/* ... Resto del componente (Items, Texto, Footer) igual ... */}
+
       {review.items && review.items.length > 0 && (
         <div className="items-container">
           {review.items.map((item, idx) => (
@@ -68,12 +90,10 @@ const ReviewCard = ({ review, index }) => {
         </div>
       )}
 
-      {/* Texto de la reseña */}
       {review.reviewText && (
         <p className="review-text">"{review.reviewText}"</p>
       )}
 
-      {/* Footer: Metadatos (Precio y Fecha) */}
       <div className="card-footer">
         {review.price > 0 && (
           <div className="meta-tag price-tag">

@@ -47,6 +47,7 @@ package.json
 README.md
 src/App.css
 src/App.jsx
+src/components/GoogleLocationSearch.jsx
 src/components/Header.css
 src/components/Header.jsx
 src/components/PopSelect.css
@@ -73,188 +74,102 @@ wrangler.jsonc
 <files>
 This section contains the contents of the repository's files.
 
-<file path="src/components/PopSelect.css">
-/* Contenedor relativo para posicionar el menú flotante */
-.pop-select-container {
-  position: relative;
-  width: 100%;
-  font-family: "Fredoka", sans-serif;
-}
+<file path="src/components/GoogleLocationSearch.jsx">
+import { useEffect, useRef, useState } from "react";
+import { useMapsLibrary } from "@vis.gl/react-google-maps";
+import { MapPin, X } from "lucide-react";
+import "./ReviewForm.css"; // Reusamos estilos
 
-/* --- EL BOTÓN PRINCIPAL (Lo que ves cuando está cerrado) --- */
-.pop-select-trigger {
-  width: 100%;
-  padding: 14px 16px;
-  background: #ffffff;
-  border: 3px solid #1a1a1a;
-  border-radius: 12px;
-  cursor: pointer;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 16px;
-  font-weight: 600;
-  color: #1a1a1a;
-  box-shadow: 4px 4px 0px rgba(0, 0, 0, 0.1);
-  transition: all 0.2s ease;
-  user-select: none;
-}
+// NOTA: Este componente debe estar envuelto en un <APIProvider> en el nivel superior
+const GoogleLocationSearch = ({ value, onChange }) => {
+  const [inputValue, setInputValue] = useState(value || "");
+  const inputRef = useRef(null);
+  const placesLibrary = useMapsLibrary("places");
+  const [autocomplete, setAutocomplete] = useState(null);
 
-/* Efecto al pasar el mouse o estar abierto */
-.pop-select-trigger:hover,
-.pop-select-trigger.open {
-  background: #fffbef; /* Amarillo pálido */
-  transform: translate(-2px, -2px);
-  box-shadow: 6px 6px 0px #1a1a1a; /* Sombra dura negra */
-}
-
-/* Icono de flecha */
-.arrow-icon {
-  transition: transform 0.3s ease;
-  flex-shrink: 0;
-}
-
-.pop-select-trigger.open .arrow-icon {
-  transform: rotate(180deg);
-}
-
-/* --- EL MENÚ DESPLEGABLE (La lista) --- */
-.pop-options-list {
-  position: absolute;
-  top: calc(100% + 8px); /* Un poco separado del trigger */
-  left: 0;
-  width: 100%;
-  background: #ffffff;
-  border: 3px solid #1a1a1a;
-  border-radius: 12px;
-  box-shadow: 8px 8px 0px rgba(0, 0, 0, 0.2);
-  z-index: 100; /* Para que flote sobre todo lo demás */
-  max-height: 240px;
-  overflow-y: auto; /* Scroll si hay muchos items */
-  padding: 0;
-  margin: 0;
-  list-style: none;
-}
-
-/* Estilo del Scrollbar para que combine */
-.pop-options-list::-webkit-scrollbar {
-  width: 10px;
-}
-.pop-options-list::-webkit-scrollbar-track {
-  background: #f1f1f1;
-  border-left: 2px solid #1a1a1a;
-  border-radius: 0 10px 10px 0;
-}
-.pop-options-list::-webkit-scrollbar-thumb {
-  background: #1a1a1a;
-  border-radius: 10px;
-  border: 2px solid #f1f1f1;
-}
-
-/* --- CADA OPCIÓN --- */
-.pop-option-item {
-  padding: 12px 16px;
-  cursor: pointer;
-  font-weight: 600;
-  color: #1a1a1a;
-  border-bottom: 2px solid #f3f4f6;
-  transition: all 0.1s;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.pop-option-item:last-child {
-  border-bottom: none;
-}
-
-/* Hover en las opciones: Explosión de color */
-.pop-option-item:hover {
-  background: #ffdd59; /* Amarillo */
-  padding-left: 24px; /* Pequeño desplazamiento a la derecha */
-}
-
-.pop-option-item.selected {
-  background: #0fbcf9; /* Azul cyan */
-  color: white; /* Texto blanco en el seleccionado */
-}
-</file>
-
-<file path="src/components/PopSelect.jsx">
-import { useState, useRef, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { ChevronDown, Check } from "lucide-react";
-import "./PopSelect.css";
-
-const PopSelect = ({
-  options,
-  value,
-  onChange,
-  placeholder = "Seleccionar...",
-}) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const containerRef = useRef(null);
-
-  // Cerrar el menú si haces clic fuera de él
   useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (
-        containerRef.current &&
-        !containerRef.current.contains(event.target)
-      ) {
-        setIsOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+    if (!placesLibrary || !inputRef.current) return;
 
-  const handleSelect = (option) => {
-    onChange(option);
-    setIsOpen(false);
-  };
+    // Configuración del Autocomplete
+    const opts = {
+      fields: ["geometry", "name", "formatted_address", "url"], // 'url' nos da el link directo a Maps
+      types: ["establishment", "geocode"], // Busca negocios y direcciones
+    };
+
+    const auto = new placesLibrary.Autocomplete(inputRef.current, opts);
+    setAutocomplete(auto);
+
+    // Escuchar cuando el usuario selecciona algo
+    const listener = auto.addListener("place_changed", () => {
+      const place = auto.getPlace();
+
+      if (!place.name) return; // Si no seleccionó nada válido
+
+      // Formato bonito: "Nombre, Ciudad"
+      // Google a veces devuelve el nombre completo en formatted_address, tratamos de limpiarlo
+      let cleanAddress = place.name;
+      if (place.formatted_address) {
+        // Extraer ciudad/barrio si es posible, o usar la dirección formateada
+        const addressParts = place.formatted_address.split(",");
+        if (addressParts.length > 1) {
+          cleanAddress = `${place.name}, ${addressParts[1].trim()}`;
+        }
+      }
+
+      setInputValue(cleanAddress);
+
+      // Enviamos al padre el valor limpio
+      // Opcional: Podrías enviar todo el objeto 'place' si quieres guardar lat/lng o el link
+      onChange(cleanAddress);
+    });
+
+    return () => {
+      google.maps.event.clearInstanceListeners(listener);
+    };
+  }, [placesLibrary, onChange]);
+
+  // Sincronizar si el valor externo cambia (ej: limpiar form)
+  useEffect(() => {
+    setInputValue(value);
+  }, [value]);
 
   return (
-    <div className="pop-select-container" ref={containerRef}>
-      {/* EL BOTÓN VISIBLE */}
-      <div
-        className={`pop-select-trigger ${isOpen ? "open" : ""}`}
-        onClick={() => setIsOpen(!isOpen)}
-      >
-        <span>{value || placeholder}</span>
-        <ChevronDown className="arrow-icon" size={20} strokeWidth={3} />
-      </div>
-
-      {/* EL MENÚ ANIMADO */}
-      <AnimatePresence>
-        {isOpen && (
-          <motion.ul
-            className="pop-options-list"
-            initial={{ opacity: 0, y: -10, scaleY: 0.8 }}
-            animate={{ opacity: 1, y: 0, scaleY: 1 }}
-            exit={{ opacity: 0, y: -10, scaleY: 0.8 }}
-            transition={{ type: "spring", stiffness: 400, damping: 25 }}
-          >
-            {options.map((option) => (
-              <li
-                key={option}
-                className={`pop-option-item ${
-                  value === option ? "selected" : ""
-                }`}
-                onClick={() => handleSelect(option)}
-              >
-                {option}
-                {value === option && <Check size={16} strokeWidth={4} />}
-              </li>
-            ))}
-          </motion.ul>
-        )}
-      </AnimatePresence>
+    <div className="input-wrapper">
+      <MapPin className="input-icon" size={20} strokeWidth={3} />
+      <input
+        ref={inputRef}
+        type="text"
+        value={inputValue}
+        onChange={(e) => {
+          setInputValue(e.target.value);
+          onChange(e.target.value);
+        }}
+        placeholder="Busca en Google Maps..."
+        className="modern-input"
+      />
+      {inputValue && (
+        <button
+          type="button"
+          onClick={() => {
+            setInputValue("");
+            onChange("");
+          }}
+          style={{
+            position: "absolute",
+            right: "10px",
+            background: "none",
+            border: "none",
+            cursor: "pointer",
+          }}
+        >
+          <X size={16} />
+        </button>
+      )}
     </div>
   );
 };
 
-export default PopSelect;
+export default GoogleLocationSearch;
 </file>
 
 <file path="eslint.config.js">
@@ -453,6 +368,384 @@ function App() {
 }
 
 export default App;
+</file>
+
+<file path="src/components/PopSelect.css">
+/* Contenedor relativo para posicionar el menú flotante */
+.pop-select-container {
+  position: relative;
+  width: 100%;
+  font-family: "Fredoka", sans-serif;
+}
+
+/* --- EL BOTÓN PRINCIPAL (Lo que ves cuando está cerrado) --- */
+.pop-select-trigger {
+  width: 100%;
+  padding: 14px 16px;
+  background: #ffffff;
+  border: 3px solid #1a1a1a;
+  border-radius: 12px;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 16px;
+  font-weight: 600;
+  color: #1a1a1a;
+  box-shadow: 4px 4px 0px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+/* Efecto al pasar el mouse o estar abierto */
+.pop-select-trigger:hover,
+.pop-select-trigger.open {
+  background: #fffbef; /* Amarillo pálido */
+  transform: translate(-2px, -2px);
+  box-shadow: 6px 6px 0px #1a1a1a; /* Sombra dura negra */
+}
+
+/* Icono de flecha */
+.arrow-icon {
+  transition: transform 0.3s ease;
+  flex-shrink: 0;
+}
+
+.pop-select-trigger.open .arrow-icon {
+  transform: rotate(180deg);
+}
+
+/* --- EL MENÚ DESPLEGABLE (La lista) --- */
+.pop-options-list {
+  position: absolute;
+  top: calc(100% + 8px); /* Un poco separado del trigger */
+  left: 0;
+  width: 100%;
+  background: #ffffff;
+  border: 3px solid #1a1a1a;
+  border-radius: 12px;
+  box-shadow: 8px 8px 0px rgba(0, 0, 0, 0.2);
+  z-index: 100; /* Para que flote sobre todo lo demás */
+  max-height: 240px;
+  overflow-y: auto; /* Scroll si hay muchos items */
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+/* Estilo del Scrollbar para que combine */
+.pop-options-list::-webkit-scrollbar {
+  width: 10px;
+}
+.pop-options-list::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-left: 2px solid #1a1a1a;
+  border-radius: 0 10px 10px 0;
+}
+.pop-options-list::-webkit-scrollbar-thumb {
+  background: #1a1a1a;
+  border-radius: 10px;
+  border: 2px solid #f1f1f1;
+}
+
+/* --- CADA OPCIÓN --- */
+.pop-option-item {
+  padding: 12px 16px;
+  cursor: pointer;
+  font-weight: 600;
+  color: #1a1a1a;
+  border-bottom: 2px solid #f3f4f6;
+  transition: all 0.1s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pop-option-item:last-child {
+  border-bottom: none;
+}
+
+/* Hover en las opciones: Explosión de color */
+.pop-option-item:hover {
+  background: #ffdd59; /* Amarillo */
+  padding-left: 24px; /* Pequeño desplazamiento a la derecha */
+}
+
+.pop-option-item.selected {
+  background: #0fbcf9; /* Azul cyan */
+  color: white; /* Texto blanco en el seleccionado */
+}
+</file>
+
+<file path="src/components/PopSelect.jsx">
+import { useState, useRef, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { ChevronDown, Check } from "lucide-react";
+import "./PopSelect.css";
+
+const PopSelect = ({
+  options,
+  value,
+  onChange,
+  placeholder = "Seleccionar...",
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const containerRef = useRef(null);
+
+  // Cerrar el menú si haces clic fuera de él
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(event.target)
+      ) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleSelect = (option) => {
+    onChange(option);
+    setIsOpen(false);
+  };
+
+  return (
+    <div className="pop-select-container" ref={containerRef}>
+      {/* EL BOTÓN VISIBLE */}
+      <div
+        className={`pop-select-trigger ${isOpen ? "open" : ""}`}
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        <span>{value || placeholder}</span>
+        <ChevronDown className="arrow-icon" size={20} strokeWidth={3} />
+      </div>
+
+      {/* EL MENÚ ANIMADO */}
+      <AnimatePresence>
+        {isOpen && (
+          <motion.ul
+            className="pop-options-list"
+            initial={{ opacity: 0, y: -10, scaleY: 0.8 }}
+            animate={{ opacity: 1, y: 0, scaleY: 1 }}
+            exit={{ opacity: 0, y: -10, scaleY: 0.8 }}
+            transition={{ type: "spring", stiffness: 400, damping: 25 }}
+          >
+            {options.map((option) => (
+              <li
+                key={option}
+                className={`pop-option-item ${
+                  value === option ? "selected" : ""
+                }`}
+                onClick={() => handleSelect(option)}
+              >
+                {option}
+                {value === option && <Check size={16} strokeWidth={4} />}
+              </li>
+            ))}
+          </motion.ul>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
+export default PopSelect;
+</file>
+
+<file path="src/config/firebase.js">
+// src/config/firebase.js
+import { initializeApp } from "firebase/app";
+import { getFirestore } from "firebase/firestore";
+
+// Usamos import.meta.env para acceder a las variables en Vite
+const firebaseConfig = {
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID
+};
+
+const app = initializeApp(firebaseConfig);
+export const db = getFirestore(app);
+</file>
+
+<file path="src/constants/categories.js">
+export const CATEGORIES = [
+  "Hamburguesas",
+  "Pizza / Empanadas",
+  "Sushi",
+  "Parrilla / Carnes",
+  "Milanesa / Bodegón",
+  "Pasta / Italiana",
+  "Mexicana / Tacos",
+  "Asiática / Wok",     // Para Ramen, comida china, thai (distinto al sushi)
+  "Entrada / Picada",   // Fundamental para papas fritas, rabas, tablas
+  "Sándwiches / Wraps", // Para almuerzos rápidos o lomitos
+  "Ensaladas / Healthy",
+  "Cafetería / Brunch", // Cubre desayunos y meriendas potentes
+  "Helado",
+  "Postres",            // Para cuando piden volcán de chocolate, flan, etc.
+  "Bar / Tragos",       // Para salidas que son más alcohol que comida
+  "Cine / Snacks",      // Opcional: si quieren trackear pochoclos/nachos
+  "Otro"
+];
+</file>
+
+<file path="src/main.jsx">
+import { StrictMode } from "react";
+import { createRoot } from "react-dom/client";
+import { APIProvider } from "@vis.gl/react-google-maps"; // <--- Importar
+import "./index.css";
+import App from "./App.jsx";
+
+const API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY; // <--- Tu clave nueva
+
+createRoot(document.getElementById("root")).render(
+  <StrictMode>
+    <APIProvider apiKey={API_KEY} libraries={["places"]}>
+      <App />
+    </APIProvider>
+  </StrictMode>
+);
+</file>
+
+<file path="src/services/firestoreService.js">
+import {
+  collection,
+  addDoc,
+  getDocs,
+  query,
+  orderBy,
+  limit,
+  where,
+  Timestamp
+} from 'firebase/firestore';
+import { db } from '../config/firebase';
+
+const COLLECTION_NAME = 'reviews';
+
+// Guardar una nueva reseña
+export const addReview = async (reviewData) => {
+  try {
+    const docRef = await addDoc(collection(db, COLLECTION_NAME), {
+      ...reviewData,
+      timestamp: Timestamp.fromDate(reviewData.timestamp)
+    });
+    return docRef.id;
+  } catch (error) {
+    console.error('Error adding review:', error);
+    throw error;
+  }
+};
+
+// Obtener las últimas N reseñas
+export const getRecentReviews = async (count = 5) => {
+  try {
+    const q = query(
+      collection(db, COLLECTION_NAME),
+      orderBy('timestamp', 'desc'),
+      limit(count)
+    );
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+  } catch (error) {
+    console.error('Error getting reviews:', error);
+    throw error;
+  }
+};
+
+// Obtener todas las reseñas
+export const getAllReviews = async () => {
+  try {
+    const q = query(
+      collection(db, COLLECTION_NAME),
+      orderBy('timestamp', 'desc')
+    );
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+  } catch (error) {
+    console.error('Error getting all reviews:', error);
+    throw error;
+  }
+};
+
+// Obtener reseñas de un mes específico
+export const getReviewsByMonth = async (year, month) => {
+  try {
+    const startDate = new Date(year, month - 1, 1, 0, 0, 0);
+    const endDate = new Date(year, month, 0, 23, 59, 59, 999);
+    
+    const q = query(
+      collection(db, COLLECTION_NAME),
+      where('timestamp', '>=', Timestamp.fromDate(startDate)),
+      where('timestamp', '<=', Timestamp.fromDate(endDate)),
+      orderBy('timestamp', 'desc')
+    );
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+  } catch (error) {
+    console.error('Error getting reviews by month:', error);
+    throw error;
+  }
+};
+</file>
+
+<file path="vite.config.js">
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+
+// https://vite.dev/config/
+export default defineConfig({
+  plugins: [react()],
+})
+</file>
+
+<file path="package.json">
+{
+  "name": "fifis-prueba",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build && cp dist/index.html dist/404.html",
+    "lint": "eslint .",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@vis.gl/react-google-maps": "^1.7.1",
+    "firebase": "^12.6.0",
+    "framer-motion": "^12.23.25",
+    "lucide-react": "^0.555.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "recharts": "^3.5.1"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.1",
+    "@types/react": "^19.2.5",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^5.1.1",
+    "eslint": "^9.39.1",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "eslint-plugin-react-refresh": "^0.4.24",
+    "globals": "^16.5.0",
+    "vite": "^7.2.4"
+  }
+}
 </file>
 
 <file path="src/components/Header.jsx">
@@ -776,6 +1069,957 @@ const ReviewCard = ({ review, index }) => {
 export default ReviewCard;
 </file>
 
+<file path="src/components/ReviewForm.jsx">
+import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import PopSelect from "./PopSelect";
+import {
+  Plus,
+  X,
+  Save,
+  MapPin,
+  DollarSign,
+  Store,
+  Utensils,
+  MessageSquare,
+} from "lucide-react";
+import StarRating from "./StarRating";
+import { CATEGORIES } from "../constants/categories";
+import { addReview } from "../services/firestoreService";
+import "./ReviewForm.css";
+
+const ReviewForm = ({ onSaveSuccess }) => {
+  const [formData, setFormData] = useState({
+    placeName: "",
+    location: "",
+    price: "",
+    rating: 0,
+    reviewText: "",
+    items: [],
+  });
+
+  const [loading, setLoading] = useState(false);
+  const [newItem, setNewItem] = useState({ name: "", category: "" });
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleAddItem = () => {
+    if (newItem.name && newItem.category) {
+      setFormData((prev) => ({
+        ...prev,
+        items: [...prev.items, { ...newItem }],
+      }));
+      setNewItem({ name: "", category: "" });
+    }
+  };
+
+  const handleRemoveItem = (index) => {
+    setFormData((prev) => ({
+      ...prev,
+      items: prev.items.filter((_, i) => i !== index),
+    }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!formData.placeName || formData.rating === 0) {
+      alert("¡Oye! Falta el nombre del lugar o el puntaje.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const reviewData = {
+        placeName: formData.placeName.trim(),
+        location: formData.location.trim(),
+        price: parseFloat(formData.price) || 0,
+        rating: formData.rating,
+        reviewText: formData.reviewText.trim(),
+        items: formData.items,
+        timestamp: new Date(),
+      };
+
+      await addReview(reviewData);
+
+      setFormData({
+        placeName: "",
+        location: "",
+        price: "",
+        rating: 0,
+        reviewText: "",
+        items: [],
+      });
+
+      if (onSaveSuccess) onSaveSuccess();
+    } catch (error) {
+      console.error("Error:", error);
+      alert("Ups, error al guardar.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.6, type: "spring" }}
+      className="form-container"
+    >
+      <form onSubmit={handleSubmit} className="review-form">
+        {/* --- SECCIÓN PRINCIPAL --- */}
+        <div className="form-grid">
+          {/* Nombre del Lugar */}
+          <div className="input-group full-width">
+            <label>Lugar</label>
+            <div className="input-wrapper">
+              <Store className="input-icon" size={20} strokeWidth={3} />
+              <input
+                type="text"
+                name="placeName"
+                value={formData.placeName}
+                onChange={handleInputChange}
+                placeholder="¿Dónde comieron hoy?"
+                required
+                className="modern-input"
+              />
+            </div>
+          </div>
+
+          {/* Ubicación */}
+          <div className="input-group">
+            <label>Ubicación</label>
+            <div className="input-wrapper">
+              <MapPin className="input-icon" size={20} strokeWidth={3} />
+              <input
+                type="text"
+                name="location"
+                value={formData.location}
+                onChange={handleInputChange}
+                placeholder="Ej: Palermo"
+                className="modern-input"
+              />
+            </div>
+          </div>
+
+          {/* Precio */}
+          <div className="input-group">
+            <label>Precio Total</label>
+            <div className="input-wrapper">
+              <DollarSign className="input-icon" size={20} strokeWidth={3} />
+              <input
+                type="number"
+                name="price"
+                value={formData.price}
+                onChange={handleInputChange}
+                placeholder="0"
+                min="0"
+                step="0.01"
+                className="modern-input"
+              />
+            </div>
+          </div>
+        </div>
+        {/* --- SECCIÓN COMIDA (ITEMS) --- */}
+        <div className="items-section">
+          <label className="section-label">¿QUÉ PIDIERON?</label>
+
+          <div className="add-item-box">
+            <div className="select-wrapper">
+              <PopSelect
+                options={CATEGORIES}
+                value={newItem.category}
+                onChange={(val) =>
+                  setNewItem((prev) => ({ ...prev, category: val }))
+                }
+                placeholder="Categoría..."
+              />
+            </div>
+            <div className="input-wrapper item-input-wrapper">
+              <Utensils className="input-icon" size={18} strokeWidth={3} />
+              <input
+                type="text"
+                value={newItem.name}
+                onChange={(e) =>
+                  setNewItem((prev) => ({ ...prev, name: e.target.value }))
+                }
+                placeholder="Plato (ej: Doble Cheddar)"
+                className="modern-input"
+                onKeyPress={(e) =>
+                  e.key === "Enter" && (e.preventDefault(), handleAddItem())
+                }
+              />
+            </div>
+
+            <button
+              type="button"
+              className="add-btn"
+              onClick={handleAddItem}
+              disabled={!newItem.name || !newItem.category}
+              title="Agregar Item"
+            >
+              <Plus size={24} strokeWidth={4} />
+            </button>
+          </div>
+
+          {/* Lista de Items Agregados (Pills) */}
+          <div className="items-list">
+            <AnimatePresence>
+              {formData.items.map((item, index) => (
+                <motion.div
+                  key={`${item.name}-${index}`}
+                  initial={{ opacity: 0, scale: 0.8, rotate: -5 }}
+                  animate={{ opacity: 1, scale: 1, rotate: 0 }}
+                  exit={{ opacity: 0, scale: 0.5 }}
+                  className="item-chip"
+                >
+                  <span className="chip-cat">{item.category}</span>
+                  <span className="chip-name">{item.name}</span>
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveItem(index)}
+                    className="chip-remove"
+                  >
+                    <X size={16} strokeWidth={3} />
+                  </button>
+                </motion.div>
+              ))}
+            </AnimatePresence>
+          </div>
+        </div>
+        {/* --- SECCIÓN PUNTAJE Y RESEÑA --- */}
+        <div className="rating-section">
+          <label
+            className="section-label centered"
+            style={{ color: "#1a1a1a", textShadow: "none" }}
+          >
+            TU VEREDICTO
+          </label>
+          <div className="rating-container">
+            <StarRating
+              rating={formData.rating}
+              onRatingChange={(r) =>
+                setFormData((prev) => ({ ...prev, rating: r }))
+              }
+              interactive={true}
+              size={36}
+            />
+          </div>
+        </div>
+        <div className="input-group">
+          <div className="input-wrapper textarea-wrapper">
+            <MessageSquare
+              className="input-icon text-icon"
+              size={20}
+              strokeWidth={3}
+            />
+            <textarea
+              name="reviewText"
+              value={formData.reviewText}
+              onChange={handleInputChange}
+              placeholder="Escribe aquí tu reseña..."
+              rows="3"
+              className="modern-textarea"
+            />
+          </div>
+        </div>
+        {/* --- BOTÓN SUBMIT --- */}
+        <motion.button
+          type="submit"
+          className="submit-btn-large"
+          disabled={loading}
+          whileTap={{ scale: 0.98 }}
+        >
+          {loading ? (
+            "Guardando..."
+          ) : (
+            <>
+              <Save size={24} strokeWidth={3} />
+              <span>Guardar Reseña</span>
+            </>
+          )}
+        </motion.button>
+      </form>
+    </motion.div>
+  );
+};
+
+export default ReviewForm;
+</file>
+
+<file path="src/components/StarRating.jsx">
+import { motion } from "framer-motion";
+import { Star } from "lucide-react";
+import "./StarRating.css";
+
+const StarRating = ({
+  rating,
+  onRatingChange,
+  interactive = true,
+  size = 24,
+}) => {
+  const handleStarClick = (value, isHalf) => {
+    if (!interactive) return;
+    const newRating = isHalf ? value - 0.5 : value;
+    onRatingChange(newRating);
+  };
+
+  return (
+    <div
+      className={`star-rating-container ${interactive ? "interactive" : ""}`}
+    >
+      {[1, 2, 3, 4, 5].map((index) => {
+        let fillPercentage = 0;
+        if (rating >= index) {
+          fillPercentage = 100;
+        } else if (rating >= index - 0.5) {
+          fillPercentage = 50;
+        }
+
+        return (
+          <div
+            key={index}
+            className="star-wrapper"
+            style={{ width: size, height: size }}
+          >
+            {/* ZONAS DE CLIC */}
+            {interactive && (
+              <>
+                <button
+                  type="button"
+                  className="click-zone left"
+                  onClick={() => handleStarClick(index, true)}
+                  aria-label={`Calificar ${index - 0.5}`}
+                />
+                <button
+                  type="button"
+                  className="click-zone right"
+                  onClick={() => handleStarClick(index, false)}
+                  aria-label={`Calificar ${index}`}
+                />
+              </>
+            )}
+
+            {/* CAPA 1: Estrella Fondo (Blanca con borde negro) */}
+            {/* strokeWidth={3} para el estilo Pop grueso */}
+            <Star size={size} className="star-bg" strokeWidth={3} />
+
+            {/* CAPA 2: Estrella Relleno (Amarilla con borde negro) */}
+            <motion.div
+              className="star-fill-mask"
+              initial={false}
+              animate={{ width: `${fillPercentage}%` }}
+              transition={{ type: "spring", stiffness: 400, damping: 25 }}
+            >
+              <Star size={size} className="star-fg" strokeWidth={3} />
+            </motion.div>
+          </div>
+        );
+      })}
+
+      {/* Badge con el número */}
+      {interactive && rating > 0 && (
+        <motion.span
+          initial={{ opacity: 0, scale: 0.5 }}
+          animate={{ opacity: 1, scale: 1 }}
+          key={rating}
+          className="rating-number"
+        >
+          {rating}
+        </motion.span>
+      )}
+    </div>
+  );
+};
+
+export default StarRating;
+</file>
+
+<file path="src/index.css">
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap");
+
+:root {
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto",
+    "Oxygen", "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue",
+    sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+
+  color-scheme: light;
+  color: #1a1a1a;
+  background-color: #fafafa;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  --pop-black: #1a1a1a;
+  --pop-white: #ffffff;
+  --pop-yellow: #ffdd59;
+  --pop-pink: #ff5e57;
+  --pop-blue: #0fbcf9;
+  --border-thick: 3px solid var(--pop-black);
+  --shadow-hard: 4px 4px 0px var(--pop-black);
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  font-family: 'Fredoka', sans-serif;
+}
+
+#root {
+  width: 100%;
+  min-height: 100vh;
+}
+
+button {
+  font-family: inherit;
+}
+
+input,
+select,
+textarea {
+  font-family: inherit;
+}
+</file>
+
+<file path="src/views/Home.jsx">
+import { useState, useEffect } from "react";
+import { motion } from "framer-motion";
+import { Sparkles, Pizza, Search } from "lucide-react"; // Iconos divertidos
+import Header from "../components/Header";
+import ReviewForm from "../components/ReviewForm";
+import ReviewCard from "../components/ReviewCard";
+import { getRecentReviews } from "../services/firestoreService";
+import "./Home.css";
+
+const Home = ({ onNavigateToStats }) => {
+  const [recentReviews, setRecentReviews] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const loadRecentReviews = async () => {
+    try {
+      setLoading(true);
+      // Traemos las últimas 5 para que el feed no sea infinito
+      const reviews = await getRecentReviews(5);
+      setRecentReviews(reviews);
+    } catch (error) {
+      console.error("Error loading reviews:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadRecentReviews();
+  }, []);
+
+  const handleSaveSuccess = () => {
+    loadRecentReviews();
+    // Scroll suave hacia abajo para ver tu nueva reseña (opcional)
+    window.scrollTo({ top: 400, behavior: "smooth" });
+  };
+
+  return (
+    <div className="home-view">
+      <Header onStatsClick={onNavigateToStats} />
+
+      <div className="home-content">
+        {/* Formulario Principal */}
+        <ReviewForm onSaveSuccess={handleSaveSuccess} />
+
+        {/* Separador Estilo Cinta de Precaución */}
+        <div className="divider-pop" />
+
+        <section className="recent-reviews-section">
+          {/* Título Decorado */}
+          <div className="section-header">
+            <Sparkles className="title-icon" size={32} />
+            <h2 className="section-title">Últimos Hits</h2>
+            <Sparkles className="title-icon" size={32} />
+          </div>
+
+          {loading ? (
+            <motion.div
+              className="loading-state"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+            >
+              Buscando en la cocina... 🍳
+            </motion.div>
+          ) : recentReviews.length === 0 ? (
+            <motion.div
+              className="empty-state"
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+            >
+              <Pizza
+                size={48}
+                color="white"
+                strokeWidth={3}
+                style={{ filter: "drop-shadow(3px 3px 0px #1a1a1a)" }}
+              />
+              <p>¡Está muy vacío aquí!</p>
+              <span style={{ fontSize: "14px", fontWeight: "600" }}>
+                Agrega tu primera salida arriba ☝️
+              </span>
+            </motion.div>
+          ) : (
+            <div className="reviews-list">
+              {recentReviews.map((review, index) => (
+                <ReviewCard key={review.id} review={review} index={index} />
+              ))}
+            </div>
+          )}
+        </section>
+
+        {/* Footer simple para cerrar */}
+        {!loading && recentReviews.length > 0 && (
+          <div
+            style={{
+              textAlign: "center",
+              marginTop: "30px",
+              opacity: 0.5,
+              fontWeight: "bold",
+            }}
+          >
+            ——— FIN DEL MENÚ ———
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default Home;
+</file>
+
+<file path="wrangler.jsonc">
+{
+  "name": "fifis-food-tracker",
+  "compatibility_date": "2024-12-04",
+  "assets": {
+    "directory": "./dist"
+  }
+}
+</file>
+
+<file path=".gitignore">
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+.env
+.env.local
+</file>
+
+<file path="src/components/Header.css">
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  background: #ffffff;
+  border-bottom: 3px solid #1a1a1a;
+  padding: 12px 0;
+  /* Sombra dura debajo del header para separarlo del contenido */
+  box-shadow: 0px 4px 0px rgba(0, 0, 0, 0.1);
+  margin-bottom: 20px;
+}
+
+.header-content {
+  max-width: 1000px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 20px;
+}
+
+/* --- LOGO POP --- */
+.logo-container {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer; /* Invita a volver al home */
+}
+
+.logo-icon-bg {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  background: #ffdd59; /* Amarillo Pop */
+  border: 3px solid #1a1a1a;
+  border-radius: 12px;
+  box-shadow: 3px 3px 0px #1a1a1a;
+  transform: rotate(-3deg); /* Inclinación juguetona */
+  transition: transform 0.2s;
+}
+
+.logo-container:hover .logo-icon-bg {
+  transform: rotate(0deg) scale(1.1);
+}
+
+.app-title {
+  font-family: "Fredoka", sans-serif;
+  font-size: 24px;
+  font-weight: 700;
+  color: #1a1a1a;
+  margin: 0;
+  letter-spacing: 0.5px;
+  display: flex;
+  align-items: center;
+}
+
+/* El texto "Wrapped" ahora es un badge colorido */
+.text-pop {
+  background: #ff5e57; /* Rosa Pop */
+  color: white;
+  padding: 2px 8px;
+  border-radius: 6px;
+  border: 2px solid #1a1a1a;
+  margin-left: 6px;
+  font-size: 18px;
+  transform: rotate(2deg);
+  box-shadow: 2px 2px 0px #1a1a1a;
+}
+
+/* --- BOTÓN ANÁLISIS --- */
+.stats-button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  background: #0fbcf9; /* Azul Cyan Pop */
+  color: #1a1a1a;
+  border: 3px solid #1a1a1a;
+  border-radius: 50px; /* Estilo pastilla */
+  font-family: "Fredoka", sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  /* La Sombra Dura característica */
+  box-shadow: 4px 4px 0px #1a1a1a;
+  transition: all 0.15s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+.stats-button:hover {
+  transform: translate(-2px, -2px); /* Se levanta un poco */
+  box-shadow: 6px 6px 0px #1a1a1a; /* La sombra crece */
+  background: #2bcbba; /* Cambia ligeramente de color (verde agua) */
+}
+
+.stats-button:active {
+  transform: translate(2px, 2px); /* Efecto de presionar botón físico */
+  box-shadow: 0px 0px 0px #1a1a1a; /* La sombra desaparece al presionar */
+}
+
+/* Ajuste de iconos */
+.stats-button svg {
+  stroke-width: 3px; /* Líneas más gruesas en los iconos */
+}
+
+/* --- RESPONSIVE MOBILE --- */
+@media (max-width: 480px) {
+  .app-title {
+    font-size: 20px;
+  }
+
+  .text-pop {
+    font-size: 14px;
+    padding: 1px 6px;
+  }
+
+  /* En móvil, solo mostramos el icono del botón stats */
+  .stats-button .btn-text {
+    display: none;
+  }
+
+  .stats-button {
+    padding: 10px;
+    border-radius: 12px; /* Cuadrado redondeado en móvil */
+  }
+}
+</file>
+
+<file path="src/components/StarRating.css">
+.star-rating-container {
+  display: flex;
+  align-items: center;
+  gap: 4px; /* Un poco más pegadas para que parezcan un grupo */
+}
+
+.star-wrapper {
+  position: relative;
+  display: inline-block;
+  cursor: default;
+  /* Para evitar problemas de renderizado con los bordes */
+  transform: translateZ(0);
+}
+
+.interactive .star-wrapper {
+  cursor: pointer;
+  transition: transform 0.1s;
+}
+
+.interactive .star-wrapper:active {
+  transform: scale(0.9); /* Efecto de presionar */
+}
+
+/* --- LOGICA DE CLIC (Invisible) --- */
+.click-zone {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  width: 50%;
+  background: transparent;
+  border: none;
+  z-index: 10;
+  cursor: pointer;
+  padding: 0;
+}
+
+.click-zone.left {
+  left: 0;
+}
+.click-zone.right {
+  right: 0;
+}
+
+/* --- CAPA FONDO (La estrella "vacía") --- */
+.star-bg {
+  color: #1a1a1a; /* Borde Negro */
+  fill: #ffffff; /* Relleno Blanco */
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1;
+  /* Sombra dura pequeña para dar profundidad */
+  filter: drop-shadow(2px 2px 0px rgba(0, 0, 0, 0.1));
+}
+
+/* --- CAPA RELLENO (La máscara) --- */
+.star-fill-mask {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  overflow: hidden;
+  z-index: 2;
+  pointer-events: none;
+}
+
+/* --- CAPA SUPERIOR (La estrella "llena") --- */
+.star-fg {
+  color: #1a1a1a; /* Borde Negro (mismo grosor) */
+  fill: #ffdd59; /* Amarillo Pop */
+  position: absolute;
+  top: 0;
+  left: 0;
+  /* Importante: Sin sombra aquí para que no se duplique raro al cortar */
+}
+
+/* --- NÚMERO DE PUNTUACIÓN --- */
+.rating-number {
+  margin-left: 10px;
+  font-family: "Fredoka", sans-serif;
+  font-size: 20px;
+  font-weight: 700;
+  color: #1a1a1a;
+  background: #ffdd59;
+  padding: 2px 8px;
+  border-radius: 6px;
+  border: 2px solid #1a1a1a;
+  line-height: 1;
+  box-shadow: 2px 2px 0px #1a1a1a;
+  min-width: 40px;
+  text-align: center;
+}
+
+/* --- RESPONSIVE PARA MÓVIL --- */
+@media (max-width: 480px) {
+  /* Solo afectamos a las estrellas interactivas (las del formulario) */
+  .star-rating-container.interactive {
+    gap: 2px; /* Juntarlas un poco más */
+  }
+
+  .star-rating-container.interactive .star-wrapper {
+    /* Forzamos un tamaño más pequeño (28px en vez de 36px) */
+    width: 28px !important;
+    height: 28px !important;
+  }
+
+  /* Forzamos a los iconos SVG a respetar el nuevo tamaño */
+  .star-rating-container.interactive .star-wrapper svg {
+    width: 28px !important;
+    height: 28px !important;
+  }
+
+  /* Ajustamos el badge del número para que no quede gigante */
+  .interactive .rating-number {
+    font-size: 16px;
+    padding: 2px 6px;
+    margin-left: 6px;
+    min-width: 32px;
+  }
+}
+</file>
+
+<file path="src/views/Home.css">
+/* --- FONDO Y LAYOUT GENERAL --- */
+.home-view {
+  min-height: 100vh;
+  /* Fondo Blanco con patrón de puntos negros (Estilo Cómic) */
+  background-color: #f1f1f1;
+  background-image: radial-gradient(#1a1a1a 1.5px, transparent 1px);
+  background-size: 24px 24px; /* Puntos un poco más grandes */
+  padding-bottom: 60px;
+  font-family: "Fredoka", sans-serif;
+}
+
+.home-content {
+  max-width: 650px; /* Un poco más ancho para que respire */
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+/* --- SEPARADOR VISUAL --- */
+.divider-pop {
+  height: 6px;
+  background: repeating-linear-gradient(
+    45deg,
+    #1a1a1a,
+    #1a1a1a 10px,
+    #ffdd59 10px,
+    #ffdd59 20px
+  );
+  border: 3px solid #1a1a1a;
+  border-radius: 10px;
+  margin: 40px 0;
+  box-shadow: 4px 4px 0px rgba(0, 0, 0, 0.1);
+}
+
+/* --- SECCIÓN DE ÚLTIMAS RESEÑAS --- */
+.recent-reviews-section {
+  position: relative;
+}
+
+/* Título estilo "Sticker" */
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 30px;
+}
+
+.section-title {
+  font-size: 32px;
+  font-weight: 700;
+  color: #ff5e57; /* Rosa Pop */
+  margin: 0;
+  text-align: center;
+  text-transform: uppercase;
+  /* Borde negro alrededor de las letras */
+  -webkit-text-stroke: 2px #1a1a1a;
+  text-shadow: 4px 4px 0px #1a1a1a; /* Sombra sólida desplazada */
+  letter-spacing: 1px;
+  transform: rotate(-2deg); /* Un toque "chueco" */
+}
+
+/* Iconos decorativos al lado del título */
+.title-icon {
+  color: #ffdd59;
+  filter: drop-shadow(2px 2px 0px #1a1a1a);
+  stroke-width: 3px;
+}
+
+/* --- ESTADO DE CARGA Y VACÍO --- */
+.loading-state {
+  text-align: center;
+  padding: 40px;
+  background: #ffffff;
+  border: 3px solid #1a1a1a;
+  border-radius: 16px;
+  font-weight: 700;
+  box-shadow: 6px 6px 0px #1a1a1a;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  background: #0fbcf9; /* Azul Cyan */
+  border: 3px solid #1a1a1a;
+  border-radius: 20px;
+  box-shadow: 8px 8px 0px #1a1a1a;
+  color: #1a1a1a;
+  transform: rotate(1deg);
+}
+
+.empty-state p {
+  font-size: 20px;
+  font-weight: 700;
+  margin: 10px 0 0 0;
+  color: #fff;
+  text-shadow: 2px 2px 0px #1a1a1a;
+}
+
+/* Animación sutil para la lista */
+.reviews-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* --- RESPONSIVE --- */
+@media (max-width: 480px) {
+  .home-content {
+    padding: 0 16px;
+  }
+
+  .section-title {
+    font-size: 26px;
+  }
+
+  .divider-pop {
+    margin: 30px 0;
+  }
+}
+</file>
+
 <file path="src/components/ReviewForm.css">
 /* --- CONTENEDOR PRINCIPAL --- */
 .form-container {
@@ -792,7 +2036,6 @@ export default ReviewCard;
   box-shadow: 8px 8px 0px #1a1a1a;
   position: relative;
   /* Decoración: patrón de puntos sutil en el fondo */
-  background-image: radial-gradient(#1a1a1a 1px, transparent 1px);
   background-size: 20px 20px;
   background-color: #fff;
 }
@@ -1108,1082 +2351,25 @@ export default ReviewCard;
     flex: 1 1 100%;
     margin-top: 4px;
   }
-}
-</file>
 
-<file path="src/components/ReviewForm.jsx">
-import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import PopSelect from "./PopSelect";
-import {
-  Plus,
-  X,
-  Save,
-  MapPin,
-  DollarSign,
-  Store,
-  Utensils,
-  MessageSquare,
-} from "lucide-react";
-import StarRating from "./StarRating";
-import { CATEGORIES } from "../constants/categories";
-import { addReview } from "../services/firestoreService";
-import "./ReviewForm.css";
-
-const ReviewForm = ({ onSaveSuccess }) => {
-  const [formData, setFormData] = useState({
-    placeName: "",
-    location: "",
-    price: "",
-    rating: 0,
-    reviewText: "",
-    items: [],
-  });
-
-  const [loading, setLoading] = useState(false);
-  const [newItem, setNewItem] = useState({ name: "", category: "" });
-
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleAddItem = () => {
-    if (newItem.name && newItem.category) {
-      setFormData((prev) => ({
-        ...prev,
-        items: [...prev.items, { ...newItem }],
-      }));
-      setNewItem({ name: "", category: "" });
-    }
-  };
-
-  const handleRemoveItem = (index) => {
-    setFormData((prev) => ({
-      ...prev,
-      items: prev.items.filter((_, i) => i !== index),
-    }));
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!formData.placeName || formData.rating === 0) {
-      alert("¡Oye! Falta el nombre del lugar o el puntaje.");
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const reviewData = {
-        placeName: formData.placeName.trim(),
-        location: formData.location.trim(),
-        price: parseFloat(formData.price) || 0,
-        rating: formData.rating,
-        reviewText: formData.reviewText.trim(),
-        items: formData.items,
-        timestamp: new Date(),
-      };
-
-      await addReview(reviewData);
-
-      setFormData({
-        placeName: "",
-        location: "",
-        price: "",
-        rating: 0,
-        reviewText: "",
-        items: [],
-      });
-
-      if (onSaveSuccess) onSaveSuccess();
-    } catch (error) {
-      console.error("Error:", error);
-      alert("Ups, error al guardar.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.6, type: "spring" }}
-      className="form-container"
-    >
-      <form onSubmit={handleSubmit} className="review-form">
-        {/* --- SECCIÓN PRINCIPAL --- */}
-        <div className="form-grid">
-          {/* Nombre del Lugar */}
-          <div className="input-group full-width">
-            <label>Lugar</label>
-            <div className="input-wrapper">
-              <Store className="input-icon" size={20} strokeWidth={3} />
-              <input
-                type="text"
-                name="placeName"
-                value={formData.placeName}
-                onChange={handleInputChange}
-                placeholder="¿Dónde comieron hoy?"
-                required
-                className="modern-input"
-              />
-            </div>
-          </div>
-
-          {/* Ubicación */}
-          <div className="input-group">
-            <label>Ubicación</label>
-            <div className="input-wrapper">
-              <MapPin className="input-icon" size={20} strokeWidth={3} />
-              <input
-                type="text"
-                name="location"
-                value={formData.location}
-                onChange={handleInputChange}
-                placeholder="Ej: Palermo"
-                className="modern-input"
-              />
-            </div>
-          </div>
-
-          {/* Precio */}
-          <div className="input-group">
-            <label>Precio Total</label>
-            <div className="input-wrapper">
-              <DollarSign className="input-icon" size={20} strokeWidth={3} />
-              <input
-                type="number"
-                name="price"
-                value={formData.price}
-                onChange={handleInputChange}
-                placeholder="0"
-                min="0"
-                step="0.01"
-                className="modern-input"
-              />
-            </div>
-          </div>
-        </div>
-        {/* --- SECCIÓN COMIDA (ITEMS) --- */}
-        <div className="items-section">
-          <label className="section-label">¿QUÉ PIDIERON?</label>
-
-          <div className="add-item-box">
-            <div className="select-wrapper">
-              <PopSelect
-                options={CATEGORIES}
-                value={newItem.category}
-                onChange={(val) =>
-                  setNewItem((prev) => ({ ...prev, category: val }))
-                }
-                placeholder="Categoría..."
-              />
-            </div>
-            <div className="input-wrapper item-input-wrapper">
-              <Utensils className="input-icon" size={18} strokeWidth={3} />
-              <input
-                type="text"
-                value={newItem.name}
-                onChange={(e) =>
-                  setNewItem((prev) => ({ ...prev, name: e.target.value }))
-                }
-                placeholder="Plato (ej: Doble Cheddar)"
-                className="modern-input"
-                onKeyPress={(e) =>
-                  e.key === "Enter" && (e.preventDefault(), handleAddItem())
-                }
-              />
-            </div>
-
-            <button
-              type="button"
-              className="add-btn"
-              onClick={handleAddItem}
-              disabled={!newItem.name || !newItem.category}
-              title="Agregar Item"
-            >
-              <Plus size={24} strokeWidth={4} />
-            </button>
-          </div>
-
-          {/* Lista de Items Agregados (Pills) */}
-          <div className="items-list">
-            <AnimatePresence>
-              {formData.items.map((item, index) => (
-                <motion.div
-                  key={`${item.name}-${index}`}
-                  initial={{ opacity: 0, scale: 0.8, rotate: -5 }}
-                  animate={{ opacity: 1, scale: 1, rotate: 0 }}
-                  exit={{ opacity: 0, scale: 0.5 }}
-                  className="item-chip"
-                >
-                  <span className="chip-cat">{item.category}</span>
-                  <span className="chip-name">{item.name}</span>
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveItem(index)}
-                    className="chip-remove"
-                  >
-                    <X size={16} strokeWidth={3} />
-                  </button>
-                </motion.div>
-              ))}
-            </AnimatePresence>
-          </div>
-        </div>
-        {/* --- SECCIÓN PUNTAJE Y RESEÑA --- */}
-        <div className="rating-section">
-          <label
-            className="section-label centered"
-            style={{ color: "#1a1a1a", textShadow: "none" }}
-          >
-            TU VEREDICTO
-          </label>
-          <div className="rating-container">
-            <StarRating
-              rating={formData.rating}
-              onRatingChange={(r) =>
-                setFormData((prev) => ({ ...prev, rating: r }))
-              }
-              interactive={true}
-              size={36}
-            />
-          </div>
-        </div>
-        <div className="input-group">
-          <div className="input-wrapper textarea-wrapper">
-            <MessageSquare
-              className="input-icon text-icon"
-              size={20}
-              strokeWidth={3}
-            />
-            <textarea
-              name="reviewText"
-              value={formData.reviewText}
-              onChange={handleInputChange}
-              placeholder="Escribe aquí tu reseña..."
-              rows="3"
-              className="modern-textarea"
-            />
-          </div>
-        </div>
-        {/* --- BOTÓN SUBMIT --- */}
-        <motion.button
-          type="submit"
-          className="submit-btn-large"
-          disabled={loading}
-          whileTap={{ scale: 0.98 }}
-        >
-          {loading ? (
-            "Guardando..."
-          ) : (
-            <>
-              <Save size={24} strokeWidth={3} />
-              <span>Guardar Reseña</span>
-            </>
-          )}
-        </motion.button>
-      </form>
-    </motion.div>
-  );
-};
-
-export default ReviewForm;
-</file>
-
-<file path="src/components/StarRating.css">
-.star-rating-container {
-  display: flex;
-  align-items: center;
-  gap: 4px; /* Un poco más pegadas para que parezcan un grupo */
-}
-
-.star-wrapper {
-  position: relative;
-  display: inline-block;
-  cursor: default;
-  /* Para evitar problemas de renderizado con los bordes */
-  transform: translateZ(0);
-}
-
-.interactive .star-wrapper {
-  cursor: pointer;
-  transition: transform 0.1s;
-}
-
-.interactive .star-wrapper:active {
-  transform: scale(0.9); /* Efecto de presionar */
-}
-
-/* --- LOGICA DE CLIC (Invisible) --- */
-.click-zone {
-  position: absolute;
-  top: 0;
-  height: 100%;
-  width: 50%;
-  background: transparent;
-  border: none;
-  z-index: 10;
-  cursor: pointer;
-  padding: 0;
-}
-
-.click-zone.left {
-  left: 0;
-}
-.click-zone.right {
-  right: 0;
-}
-
-/* --- CAPA FONDO (La estrella "vacía") --- */
-.star-bg {
-  color: #1a1a1a; /* Borde Negro */
-  fill: #ffffff; /* Relleno Blanco */
-  position: absolute;
-  top: 0;
-  left: 0;
-  z-index: 1;
-  /* Sombra dura pequeña para dar profundidad */
-  filter: drop-shadow(2px 2px 0px rgba(0, 0, 0, 0.1));
-}
-
-/* --- CAPA RELLENO (La máscara) --- */
-.star-fill-mask {
-  position: absolute;
-  top: 0;
-  left: 0;
-  height: 100%;
-  overflow: hidden;
-  z-index: 2;
-  pointer-events: none;
-}
-
-/* --- CAPA SUPERIOR (La estrella "llena") --- */
-.star-fg {
-  color: #1a1a1a; /* Borde Negro (mismo grosor) */
-  fill: #ffdd59; /* Amarillo Pop */
-  position: absolute;
-  top: 0;
-  left: 0;
-  /* Importante: Sin sombra aquí para que no se duplique raro al cortar */
-}
-
-/* --- NÚMERO DE PUNTUACIÓN --- */
-.rating-number {
-  margin-left: 10px;
-  font-family: "Fredoka", sans-serif;
-  font-size: 20px;
-  font-weight: 700;
-  color: #1a1a1a;
-  background: #ffdd59;
-  padding: 2px 8px;
-  border-radius: 6px;
-  border: 2px solid #1a1a1a;
-  line-height: 1;
-  box-shadow: 2px 2px 0px #1a1a1a;
-  min-width: 40px;
-  text-align: center;
-}
-</file>
-
-<file path="src/components/StarRating.jsx">
-import { motion } from "framer-motion";
-import { Star } from "lucide-react";
-import "./StarRating.css";
-
-const StarRating = ({
-  rating,
-  onRatingChange,
-  interactive = true,
-  size = 24,
-}) => {
-  const handleStarClick = (value, isHalf) => {
-    if (!interactive) return;
-    const newRating = isHalf ? value - 0.5 : value;
-    onRatingChange(newRating);
-  };
-
-  return (
-    <div
-      className={`star-rating-container ${interactive ? "interactive" : ""}`}
-    >
-      {[1, 2, 3, 4, 5].map((index) => {
-        let fillPercentage = 0;
-        if (rating >= index) {
-          fillPercentage = 100;
-        } else if (rating >= index - 0.5) {
-          fillPercentage = 50;
-        }
-
-        return (
-          <div
-            key={index}
-            className="star-wrapper"
-            style={{ width: size, height: size }}
-          >
-            {/* ZONAS DE CLIC */}
-            {interactive && (
-              <>
-                <button
-                  type="button"
-                  className="click-zone left"
-                  onClick={() => handleStarClick(index, true)}
-                  aria-label={`Calificar ${index - 0.5}`}
-                />
-                <button
-                  type="button"
-                  className="click-zone right"
-                  onClick={() => handleStarClick(index, false)}
-                  aria-label={`Calificar ${index}`}
-                />
-              </>
-            )}
-
-            {/* CAPA 1: Estrella Fondo (Blanca con borde negro) */}
-            {/* strokeWidth={3} para el estilo Pop grueso */}
-            <Star size={size} className="star-bg" strokeWidth={3} />
-
-            {/* CAPA 2: Estrella Relleno (Amarilla con borde negro) */}
-            <motion.div
-              className="star-fill-mask"
-              initial={false}
-              animate={{ width: `${fillPercentage}%` }}
-              transition={{ type: "spring", stiffness: 400, damping: 25 }}
-            >
-              <Star size={size} className="star-fg" strokeWidth={3} />
-            </motion.div>
-          </div>
-        );
-      })}
-
-      {/* Badge con el número */}
-      {interactive && rating > 0 && (
-        <motion.span
-          initial={{ opacity: 0, scale: 0.5 }}
-          animate={{ opacity: 1, scale: 1 }}
-          key={rating}
-          className="rating-number"
-        >
-          {rating}
-        </motion.span>
-      )}
-    </div>
-  );
-};
-
-export default StarRating;
-</file>
-
-<file path="src/config/firebase.js">
-// src/config/firebase.js
-import { initializeApp } from "firebase/app";
-import { getFirestore } from "firebase/firestore";
-
-// Usamos import.meta.env para acceder a las variables en Vite
-const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID
-};
-
-const app = initializeApp(firebaseConfig);
-export const db = getFirestore(app);
-</file>
-
-<file path="src/constants/categories.js">
-export const CATEGORIES = [
-  "Hamburguesas",
-  "Pizza / Empanadas",
-  "Sushi",
-  "Parrilla / Carnes",
-  "Milanesa / Bodegón",
-  "Pasta / Italiana",
-  "Mexicana / Tacos",
-  "Asiática / Wok",     // Para Ramen, comida china, thai (distinto al sushi)
-  "Entrada / Picada",   // Fundamental para papas fritas, rabas, tablas
-  "Sándwiches / Wraps", // Para almuerzos rápidos o lomitos
-  "Ensaladas / Healthy",
-  "Cafetería / Brunch", // Cubre desayunos y meriendas potentes
-  "Helado",
-  "Postres",            // Para cuando piden volcán de chocolate, flan, etc.
-  "Bar / Tragos",       // Para salidas que son más alcohol que comida
-  "Cine / Snacks",      // Opcional: si quieren trackear pochoclos/nachos
-  "Otro"
-];
-</file>
-
-<file path="src/index.css">
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap");
-
-:root {
-  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto",
-    "Oxygen", "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue",
-    sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
-
-  color-scheme: light;
-  color: #1a1a1a;
-  background-color: #fafafa;
-
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  --pop-black: #1a1a1a;
-  --pop-white: #ffffff;
-  --pop-yellow: #ffdd59;
-  --pop-pink: #ff5e57;
-  --pop-blue: #0fbcf9;
-  --border-thick: 3px solid var(--pop-black);
-  --shadow-hard: 4px 4px 0px var(--pop-black);
-}
-
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
-
-body {
-  margin: 0;
-  min-width: 320px;
-  min-height: 100vh;
-  font-family: 'Fredoka', sans-serif;
-}
-
-#root {
-  width: 100%;
-  min-height: 100vh;
-}
-
-button {
-  font-family: inherit;
-}
-
-input,
-select,
-textarea {
-  font-family: inherit;
-}
-</file>
-
-<file path="src/main.jsx">
-import { StrictMode } from 'react'
-import { createRoot } from 'react-dom/client'
-import './index.css'
-import App from './App.jsx'
-
-createRoot(document.getElementById('root')).render(
-  <StrictMode>
-    <App />
-  </StrictMode>,
-)
-</file>
-
-<file path="src/services/firestoreService.js">
-import {
-  collection,
-  addDoc,
-  getDocs,
-  query,
-  orderBy,
-  limit,
-  where,
-  Timestamp
-} from 'firebase/firestore';
-import { db } from '../config/firebase';
-
-const COLLECTION_NAME = 'reviews';
-
-// Guardar una nueva reseña
-export const addReview = async (reviewData) => {
-  try {
-    const docRef = await addDoc(collection(db, COLLECTION_NAME), {
-      ...reviewData,
-      timestamp: Timestamp.fromDate(reviewData.timestamp)
-    });
-    return docRef.id;
-  } catch (error) {
-    console.error('Error adding review:', error);
-    throw error;
-  }
-};
-
-// Obtener las últimas N reseñas
-export const getRecentReviews = async (count = 5) => {
-  try {
-    const q = query(
-      collection(db, COLLECTION_NAME),
-      orderBy('timestamp', 'desc'),
-      limit(count)
-    );
-    const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    }));
-  } catch (error) {
-    console.error('Error getting reviews:', error);
-    throw error;
-  }
-};
-
-// Obtener todas las reseñas
-export const getAllReviews = async () => {
-  try {
-    const q = query(
-      collection(db, COLLECTION_NAME),
-      orderBy('timestamp', 'desc')
-    );
-    const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    }));
-  } catch (error) {
-    console.error('Error getting all reviews:', error);
-    throw error;
-  }
-};
-
-// Obtener reseñas de un mes específico
-export const getReviewsByMonth = async (year, month) => {
-  try {
-    const startDate = new Date(year, month - 1, 1, 0, 0, 0);
-    const endDate = new Date(year, month, 0, 23, 59, 59, 999);
-    
-    const q = query(
-      collection(db, COLLECTION_NAME),
-      where('timestamp', '>=', Timestamp.fromDate(startDate)),
-      where('timestamp', '<=', Timestamp.fromDate(endDate)),
-      orderBy('timestamp', 'desc')
-    );
-    const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    }));
-  } catch (error) {
-    console.error('Error getting reviews by month:', error);
-    throw error;
-  }
-};
-</file>
-
-<file path="src/views/Home.css">
-/* --- FONDO Y LAYOUT GENERAL --- */
-.home-view {
-  min-height: 100vh;
-  /* Fondo Blanco con patrón de puntos negros (Estilo Cómic) */
-  background-color: #f1f1f1;
-  background-image: radial-gradient(#1a1a1a 2px, transparent 1px);
-  background-size: 24px 24px; /* Puntos un poco más grandes */
-  padding-bottom: 60px;
-  font-family: "Fredoka", sans-serif;
-}
-
-.home-content {
-  max-width: 650px; /* Un poco más ancho para que respire */
-  margin: 0 auto;
-  padding: 0 20px;
-}
-
-/* --- SEPARADOR VISUAL --- */
-.divider-pop {
-  height: 6px;
-  background: repeating-linear-gradient(
-    45deg,
-    #1a1a1a,
-    #1a1a1a 10px,
-    #ffdd59 10px,
-    #ffdd59 20px
-  );
-  border: 3px solid #1a1a1a;
-  border-radius: 10px;
-  margin: 40px 0;
-  box-shadow: 4px 4px 0px rgba(0, 0, 0, 0.1);
-}
-
-/* --- SECCIÓN DE ÚLTIMAS RESEÑAS --- */
-.recent-reviews-section {
-  position: relative;
-}
-
-/* Título estilo "Sticker" */
-.section-header {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  margin-bottom: 30px;
-}
-
-.section-title {
-  font-size: 32px;
-  font-weight: 700;
-  color: #ff5e57; /* Rosa Pop */
-  margin: 0;
-  text-align: center;
-  text-transform: uppercase;
-  /* Borde negro alrededor de las letras */
-  -webkit-text-stroke: 2px #1a1a1a;
-  text-shadow: 4px 4px 0px #1a1a1a; /* Sombra sólida desplazada */
-  letter-spacing: 1px;
-  transform: rotate(-2deg); /* Un toque "chueco" */
-}
-
-/* Iconos decorativos al lado del título */
-.title-icon {
-  color: #ffdd59;
-  filter: drop-shadow(2px 2px 0px #1a1a1a);
-  stroke-width: 3px;
-}
-
-/* --- ESTADO DE CARGA Y VACÍO --- */
-.loading-state {
-  text-align: center;
-  padding: 40px;
-  background: #ffffff;
-  border: 3px solid #1a1a1a;
-  border-radius: 16px;
-  font-weight: 700;
-  box-shadow: 6px 6px 0px #1a1a1a;
-}
-
-.empty-state {
-  text-align: center;
-  padding: 40px 20px;
-  background: #0fbcf9; /* Azul Cyan */
-  border: 3px solid #1a1a1a;
-  border-radius: 20px;
-  box-shadow: 8px 8px 0px #1a1a1a;
-  color: #1a1a1a;
-  transform: rotate(1deg);
-}
-
-.empty-state p {
-  font-size: 20px;
-  font-weight: 700;
-  margin: 10px 0 0 0;
-  color: #fff;
-  text-shadow: 2px 2px 0px #1a1a1a;
-}
-
-/* Animación sutil para la lista */
-.reviews-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-/* --- RESPONSIVE --- */
-@media (max-width: 480px) {
-  .home-content {
-    padding: 0 16px;
+  .rating-container {
+    padding: 8px 12px; /* Menos relleno */
+    width: 100%; /* Que use todo el espacio si hace falta */
+    display: flex; /* Flex para centrar las estrellas si sobran márgenes */
+    justify-content: center;
+    box-sizing: border-box; /* Para que el padding no sume al ancho */
   }
 
-  .section-title {
-    font-size: 26px;
-  }
-
-  .divider-pop {
-    margin: 30px 0;
-  }
-}
-</file>
-
-<file path="src/views/Home.jsx">
-import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
-import { Sparkles, Pizza, Search } from "lucide-react"; // Iconos divertidos
-import Header from "../components/Header";
-import ReviewForm from "../components/ReviewForm";
-import ReviewCard from "../components/ReviewCard";
-import { getRecentReviews } from "../services/firestoreService";
-import "./Home.css";
-
-const Home = ({ onNavigateToStats }) => {
-  const [recentReviews, setRecentReviews] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  const loadRecentReviews = async () => {
-    try {
-      setLoading(true);
-      // Traemos las últimas 5 para que el feed no sea infinito
-      const reviews = await getRecentReviews(5);
-      setRecentReviews(reviews);
-    } catch (error) {
-      console.error("Error loading reviews:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadRecentReviews();
-  }, []);
-
-  const handleSaveSuccess = () => {
-    loadRecentReviews();
-    // Scroll suave hacia abajo para ver tu nueva reseña (opcional)
-    window.scrollTo({ top: 400, behavior: "smooth" });
-  };
-
-  return (
-    <div className="home-view">
-      <Header onStatsClick={onNavigateToStats} />
-
-      <div className="home-content">
-        {/* Formulario Principal */}
-        <ReviewForm onSaveSuccess={handleSaveSuccess} />
-
-        {/* Separador Estilo Cinta de Precaución */}
-        <div className="divider-pop" />
-
-        <section className="recent-reviews-section">
-          {/* Título Decorado */}
-          <div className="section-header">
-            <Sparkles className="title-icon" size={32} />
-            <h2 className="section-title">Últimos Hits</h2>
-            <Sparkles className="title-icon" size={32} />
-          </div>
-
-          {loading ? (
-            <motion.div
-              className="loading-state"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-            >
-              Buscando en la cocina... 🍳
-            </motion.div>
-          ) : recentReviews.length === 0 ? (
-            <motion.div
-              className="empty-state"
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-            >
-              <Pizza
-                size={48}
-                color="white"
-                strokeWidth={3}
-                style={{ filter: "drop-shadow(3px 3px 0px #1a1a1a)" }}
-              />
-              <p>¡Está muy vacío aquí!</p>
-              <span style={{ fontSize: "14px", fontWeight: "600" }}>
-                Agrega tu primera salida arriba ☝️
-              </span>
-            </motion.div>
-          ) : (
-            <div className="reviews-list">
-              {recentReviews.map((review, index) => (
-                <ReviewCard key={review.id} review={review} index={index} />
-              ))}
-            </div>
-          )}
-        </section>
-
-        {/* Footer simple para cerrar */}
-        {!loading && recentReviews.length > 0 && (
-          <div
-            style={{
-              textAlign: "center",
-              marginTop: "30px",
-              opacity: 0.5,
-              fontWeight: "bold",
-            }}
-          >
-            ——— FIN DEL MENÚ ———
-          </div>
-        )}
-      </div>
-    </div>
-  );
-};
-
-export default Home;
-</file>
-
-<file path="vite.config.js">
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
-
-// https://vite.dev/config/
-export default defineConfig({
-  plugins: [react()],
-})
-</file>
-
-<file path="package.json">
-{
-  "name": "fifis-prueba",
-  "private": true,
-  "version": "0.0.0",
-  "type": "module",
-  "scripts": {
-    "dev": "vite",
-    "build": "vite build && cp dist/index.html dist/404.html",
-    "lint": "eslint .",
-    "preview": "vite preview"
-  },
-  "dependencies": {
-    "firebase": "^12.6.0",
-    "framer-motion": "^12.23.25",
-    "lucide-react": "^0.555.0",
-    "react": "^19.2.0",
-    "react-dom": "^19.2.0",
-    "recharts": "^3.5.1"
-  },
-  "devDependencies": {
-    "@eslint/js": "^9.39.1",
-    "@types/react": "^19.2.5",
-    "@types/react-dom": "^19.2.3",
-    "@vitejs/plugin-react": "^5.1.1",
-    "eslint": "^9.39.1",
-    "eslint-plugin-react-hooks": "^7.0.1",
-    "eslint-plugin-react-refresh": "^0.4.24",
-    "globals": "^16.5.0",
-    "vite": "^7.2.4"
-  }
-}
-</file>
-
-<file path="src/components/Header.css">
-.app-header {
-  position: sticky;
-  top: 0;
-  z-index: 1000;
-  background: #ffffff;
-  border-bottom: 3px solid #1a1a1a;
-  padding: 12px 0;
-  /* Sombra dura debajo del header para separarlo del contenido */
-  box-shadow: 0px 4px 0px rgba(0, 0, 0, 0.1);
-  margin-bottom: 20px;
-}
-
-.header-content {
-  max-width: 1000px;
-  margin: 0 auto;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0 20px;
-}
-
-/* --- LOGO POP --- */
-.logo-container {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  cursor: pointer; /* Invita a volver al home */
-}
-
-.logo-icon-bg {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 42px;
-  height: 42px;
-  background: #ffdd59; /* Amarillo Pop */
-  border: 3px solid #1a1a1a;
-  border-radius: 12px;
-  box-shadow: 3px 3px 0px #1a1a1a;
-  transform: rotate(-3deg); /* Inclinación juguetona */
-  transition: transform 0.2s;
-}
-
-.logo-container:hover .logo-icon-bg {
-  transform: rotate(0deg) scale(1.1);
-}
-
-.app-title {
-  font-family: "Fredoka", sans-serif;
-  font-size: 24px;
-  font-weight: 700;
-  color: #1a1a1a;
-  margin: 0;
-  letter-spacing: 0.5px;
-  display: flex;
-  align-items: center;
-}
-
-/* El texto "Wrapped" ahora es un badge colorido */
-.text-pop {
-  background: #ff5e57; /* Rosa Pop */
-  color: white;
-  padding: 2px 8px;
-  border-radius: 6px;
-  border: 2px solid #1a1a1a;
-  margin-left: 6px;
-  font-size: 18px;
-  transform: rotate(2deg);
-  box-shadow: 2px 2px 0px #1a1a1a;
-}
-
-/* --- BOTÓN ANÁLISIS --- */
-.stats-button {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 18px;
-  background: #0fbcf9; /* Azul Cyan Pop */
-  color: #1a1a1a;
-  border: 3px solid #1a1a1a;
-  border-radius: 50px; /* Estilo pastilla */
-  font-family: "Fredoka", sans-serif;
-  font-size: 16px;
-  font-weight: 700;
-  cursor: pointer;
-  /* La Sombra Dura característica */
-  box-shadow: 4px 4px 0px #1a1a1a;
-  transition: all 0.15s cubic-bezier(0.25, 0.8, 0.25, 1);
-}
-
-.stats-button:hover {
-  transform: translate(-2px, -2px); /* Se levanta un poco */
-  box-shadow: 6px 6px 0px #1a1a1a; /* La sombra crece */
-  background: #2bcbba; /* Cambia ligeramente de color (verde agua) */
-}
-
-.stats-button:active {
-  transform: translate(2px, 2px); /* Efecto de presionar botón físico */
-  box-shadow: 0px 0px 0px #1a1a1a; /* La sombra desaparece al presionar */
-}
-
-/* Ajuste de iconos */
-.stats-button svg {
-  stroke-width: 3px; /* Líneas más gruesas en los iconos */
-}
-
-/* --- RESPONSIVE MOBILE --- */
-@media (max-width: 480px) {
-  .app-title {
-    font-size: 20px;
-  }
-
-  .text-pop {
-    font-size: 14px;
-    padding: 1px 6px;
-  }
-
-  /* En móvil, solo mostramos el icono del botón stats */
-  .stats-button .btn-text {
-    display: none;
-  }
-
-  .stats-button {
-    padding: 10px;
-    border-radius: 12px; /* Cuadrado redondeado en móvil */
+  /* Ajuste opcional para que la sección no sea tan alta */
+  .rating-section {
+    padding: 15px;
   }
 }
 </file>
 
 <file path="src/views/Stats.css">
 @import url("https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Bangers&display=swap");
 
 /* --- VARIABLES POP ART --- */
 :root {
@@ -2238,15 +2424,22 @@ export default defineConfig({
 }
 
 .stats-main-title {
-  font-size: 48px;
-  font-weight: 700;
+  font-family: "Bangers", system-ui; /* Nueva fuente Cómic */
+  font-size: 64px; /* Aumentamos el tamaño porque esta fuente es más compacta */
+  font-weight: 400; /* Bangers ya es negrita por defecto */
   text-align: center;
   margin: 30px 0;
   color: var(--pop-yellow);
-  text-shadow: 3px 3px 0px var(--pop-black);
+
+  /* Borde negro grueso alrededor de las letras */
   -webkit-text-stroke: 2px var(--pop-black);
-  letter-spacing: 1px;
-  transform: rotate(-2deg); /* Un toque desordenado */
+
+  /* Sombra sólida desplazada */
+  text-shadow: 4px 4px 0px var(--pop-black);
+
+  letter-spacing: 3px; /* Un poco más de aire entre letras */
+  transform: rotate(-2deg);
+  line-height: 1.1;
 }
 
 /* --- CONTROLES DE FILTRO (La barra superior) --- */
@@ -2512,8 +2705,59 @@ export default defineConfig({
   }
 
   .stats-main-title {
-    font-size: 36px;
+    font-size: 42px; /* Un poco más pequeña en celular */
   }
+}
+/* Nuevos colores de tarjetas */
+.pop-card.orange {
+  border-bottom: 8px solid #ff9f43;
+}
+.pop-card.pink {
+  border-bottom: 8px solid #ff9ff3;
+}
+.pop-card.cyan {
+  border-bottom: 8px solid #00d2d3;
+}
+
+/* Ajustes para gráficos en móvil */
+.chart-container {
+  height: 300px;
+  width: 100%;
+  position: relative;
+  z-index: 10;
+}
+
+/* Tooltips personalizados de Recharts suelen necesitar esto para no quedar escondidos */
+.recharts-tooltip-wrapper {
+  z-index: 1000;
+}
+
+/* Leyendas custom para móvil (Pills) */
+.custom-legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.legend-pill {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 4px 8px;
+  border-radius: 4px;
+  color: #1a1a1a;
+  border: 2px solid #1a1a1a;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1px solid #1a1a1a;
 }
 </file>
 
@@ -2529,8 +2773,12 @@ import {
   Utensils,
   Award,
   AlertCircle,
+  PieChart as PieIcon,
+  ScatterChart as ScatterIcon,
+  BarChart as BarChartIcon,
 } from "lucide-react";
 import Header from "../components/Header";
+import PopSelect from "../components/PopSelect";
 import { getAllReviews } from "../services/firestoreService";
 import { CATEGORIES } from "../constants/categories";
 import {
@@ -2544,8 +2792,24 @@ import {
   BarChart,
   Bar,
   Cell,
+  PieChart,
+  Pie,
+  ScatterChart,
+  Scatter,
+  ZAxis,
 } from "recharts";
 import "./Stats.css";
+
+// Paleta de colores para gráficos (Estilo Pop)
+const COLORS = [
+  "#0fbcf9",
+  "#ffdd59",
+  "#ff5e57",
+  "#00d2d3",
+  "#a55eea",
+  "#ff9f43",
+  "#ff9ff3",
+];
 
 const Stats = ({ onBack }) => {
   const [reviews, setReviews] = useState([]);
@@ -2553,13 +2817,30 @@ const Stats = ({ onBack }) => {
 
   // --- ESTADOS DE LA UI ---
   const [activeTab, setActiveTab] = useState("month"); // 'month' | 'history'
-
-  // Filtros
   const [selectedCategory, setSelectedCategory] = useState("Todas");
+
+  // Fechas por defecto
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
 
-  // Carga de datos
+  // Datos auxiliares
+  const monthNames = [
+    "Enero",
+    "Febrero",
+    "Marzo",
+    "Abril",
+    "Mayo",
+    "Junio",
+    "Julio",
+    "Agosto",
+    "Septiembre",
+    "Octubre",
+    "Noviembre",
+    "Diciembre",
+  ];
+
+  const categoryOptions = ["Todas", ...CATEGORIES];
+
   useEffect(() => {
     const loadData = async () => {
       try {
@@ -2574,9 +2855,33 @@ const Stats = ({ onBack }) => {
     loadData();
   }, []);
 
-  // --- LÓGICA DE FILTRADO Y PROCESAMIENTO ---
+  // --- LÓGICA DE AÑOS DISPONIBLES (Requerimiento 3) ---
+  const availableYears = useMemo(() => {
+    const currentYear = new Date().getFullYear();
+    if (reviews.length === 0) return [String(currentYear)];
 
-  // 1. Base filtrada por Categoría (Aplica a ambas pestañas)
+    // Extraer años únicos de las reseñas
+    const years = new Set(
+      reviews.map((r) => {
+        if (!r.timestamp) return currentYear;
+        return r.timestamp.toDate
+          ? r.timestamp.toDate().getFullYear()
+          : new Date(r.timestamp).getFullYear();
+      })
+    );
+
+    // Asegurar que el año actual esté siempre disponible aunque no haya reseñas aún
+    years.add(currentYear);
+
+    // Retornar ordenados descendente (2025, 2024...)
+    return Array.from(years)
+      .sort((a, b) => b - a)
+      .map(String);
+  }, [reviews]);
+
+  // --- LÓGICA DE DATOS ---
+
+  // 1. Filtro base por CATEGORÍA
   const categoryFilteredReviews = useMemo(() => {
     if (selectedCategory === "Todas") return reviews;
     return reviews.filter((r) =>
@@ -2584,17 +2889,24 @@ const Stats = ({ onBack }) => {
     );
   }, [reviews, selectedCategory]);
 
-  // 2. Datos para la pestaña MES (Filtra por fecha + categoría)
-  const monthData = useMemo(() => {
-    const filtered = categoryFilteredReviews.filter((r) => {
+  // 2. Filtro intermedio por AÑO (Para la pestaña Histórico/Anual)
+  const yearFilteredReviews = useMemo(() => {
+    return categoryFilteredReviews.filter((r) => {
       if (!r.timestamp) return false;
       const date = r.timestamp.toDate
         ? r.timestamp.toDate()
         : new Date(r.timestamp);
-      return (
-        date.getMonth() + 1 === parseInt(selectedMonth) &&
-        date.getFullYear() === parseInt(selectedYear)
-      );
+      return date.getFullYear() === parseInt(selectedYear);
+    });
+  }, [categoryFilteredReviews, selectedYear]);
+
+  // 3. Datos MENSUALES (Micro detalle)
+  const monthData = useMemo(() => {
+    const filtered = yearFilteredReviews.filter((r) => {
+      const date = r.timestamp.toDate
+        ? r.timestamp.toDate()
+        : new Date(r.timestamp);
+      return date.getMonth() + 1 === parseInt(selectedMonth);
     });
 
     const totalSpent = filtered.reduce(
@@ -2607,92 +2919,138 @@ const Stats = ({ onBack }) => {
           filtered.length
         : 0;
 
+    // A. Distribución de Categorías (Diet)
+    let categoryPieData = [];
+    if (selectedCategory === "Todas") {
+      const catCount = {};
+      filtered.forEach((r) => {
+        r.items?.forEach((item) => {
+          catCount[item.category] = (catCount[item.category] || 0) + 1;
+        });
+      });
+      categoryPieData = Object.entries(catCount)
+        .map(([name, value]) => ({ name, value }))
+        .sort((a, b) => b.value - a.value)
+        .slice(0, 6);
+    }
+
+    // B. Ritmo Semanal (Requerimiento 1: Movido a Mensual)
+    const daysMap = { 0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 }; // 0=Domingo
+    const dayNamesChart = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
+
+    filtered.forEach((r) => {
+      const date = r.timestamp.toDate
+        ? r.timestamp.toDate()
+        : new Date(r.timestamp);
+      daysMap[date.getDay()] += 1;
+    });
+
+    const dayOfWeekChart = Object.entries(daysMap).map(([dayIndex, count]) => ({
+      name: dayNamesChart[dayIndex],
+      count,
+    }));
+
     return {
       reviews: filtered,
       count: filtered.length,
       totalSpent,
       avgRating,
+      categoryPieData,
+      dayOfWeekChart,
     };
-  }, [categoryFilteredReviews, selectedMonth, selectedYear]);
+  }, [yearFilteredReviews, selectedMonth, selectedCategory]);
 
-  // 3. Datos para la pestaña HISTÓRICO
+  // 4. Datos ANUALES / HISTÓRICOS (Macro detalle)
   const historyData = useMemo(() => {
-    // A. Gráfico de Tendencia (Mensual)
-    const trendMap = {};
-    categoryFilteredReviews.forEach((r) => {
-      if (!r.timestamp) return;
+    // Usamos yearFilteredReviews para respetar el filtro de Año
+
+    // A. Frecuencia Mensual (Requerimiento 2)
+    const monthsMap = {};
+    monthNames.forEach((m, i) => (monthsMap[i] = 0)); // Inicializar 0-11
+
+    // B. Distribución de Ratings
+    const ratingMap = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+
+    // C. Scatter
+    const scatterPoints = [];
+
+    // D. Totales y Lugares
+    let totalSpentHistory = 0;
+    const placeCount = {};
+
+    yearFilteredReviews.forEach((r) => {
+      const price = r.price || 0;
+      totalSpentHistory += price;
+
       const date = r.timestamp.toDate
         ? r.timestamp.toDate()
         : new Date(r.timestamp);
-      const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(
-        2,
-        "0"
-      )}`;
 
-      // Si filtramos por categoría, contamos items, si no, contamos salidas
-      let valueToAdd = 1;
-      if (selectedCategory !== "Todas") {
-        // Contar cuantos items de esa categoria hubo en la salida
-        valueToAdd = r.items.filter(
-          (i) => i.category === selectedCategory
-        ).length;
+      // Conteo por Mes (Ene, Feb...)
+      monthsMap[date.getMonth()] += 1;
+
+      // Rating
+      const roundedRating = Math.round(r.rating || 0);
+      if (roundedRating >= 1 && roundedRating <= 5)
+        ratingMap[roundedRating] += 1;
+
+      // Scatter
+      if (price > 0 && r.rating > 0) {
+        scatterPoints.push({
+          x: price,
+          y: r.rating,
+          z: 10,
+          name: r.placeName || "Lugar",
+        });
       }
 
-      trendMap[key] = (trendMap[key] || 0) + valueToAdd;
+      // Top Places
+      if (r.placeName)
+        placeCount[r.placeName] = (placeCount[r.placeName] || 0) + 1;
     });
 
-    const trendChart = Object.entries(trendMap)
-      .map(([date, count]) => ({
-        name: date, // YYYY-MM
-        shortName: date.split("-")[1] + "/" + date.split("-")[0].slice(2),
-        count,
-      }))
-      .sort((a, b) => a.name.localeCompare(b.name));
+    // Formatear Gráfico Mensual
+    const monthlyBarChart = Object.entries(monthsMap).map(([index, count]) => ({
+      name: monthNames[index].substring(0, 3), // "Ene", "Feb"
+      fullName: monthNames[index],
+      count,
+    }));
 
-    // B. Total Gastado Histórico
-    const totalSpentHistory = categoryFilteredReviews.reduce(
-      (acc, curr) => acc + (curr.price || 0),
-      0
-    );
+    // Formatear Ratings (5 arriba)
+    const ratingChart = Object.entries(ratingMap)
+      .map(([stars, count]) => ({ name: stars + "★", count }))
+      .reverse();
 
-    // C. Top Lugares (Ponderado por cantidad de visitas)
-    const placeCount = {};
-    categoryFilteredReviews.forEach((r) => {
-      if (!r.placeName) return;
-      placeCount[r.placeName] = (placeCount[r.placeName] || 0) + 1;
-    });
-
+    // Top Places
     const topPlaces = Object.entries(placeCount)
       .map(([name, count]) => ({ name, count }))
       .sort((a, b) => b.count - a.count)
       .slice(0, 5);
 
-    // D. Más Cara y Más Barata
+    // Extremos
     let mostExpensive = null;
     let cheapest = null;
-
-    if (categoryFilteredReviews.length > 0) {
-      // Ordenar por precio
-      const sortedByPrice = [...categoryFilteredReviews].sort(
+    if (yearFilteredReviews.length > 0) {
+      const sortedByPrice = [...yearFilteredReviews].sort(
         (a, b) => b.price - a.price
       );
       mostExpensive = sortedByPrice[0];
-      // Para la más barata, ignoramos precio 0 si existe (invitaciones)
       const withPrice = sortedByPrice.filter((r) => r.price > 0);
       cheapest = withPrice[withPrice.length - 1];
     }
 
     return {
-      trendChart,
+      monthlyBarChart,
       totalSpentHistory,
       topPlaces,
       mostExpensive,
       cheapest,
-      totalCount: categoryFilteredReviews.length,
+      totalCount: yearFilteredReviews.length,
+      ratingChart,
+      scatterPoints,
     };
-  }, [categoryFilteredReviews, selectedCategory]);
+  }, [yearFilteredReviews, monthNames]);
 
-  // --- HELPERS ---
   const formatMoney = (amount) =>
     new Intl.NumberFormat("es-AR", {
       style: "currency",
@@ -2700,10 +3058,32 @@ const Stats = ({ onBack }) => {
       maximumFractionDigits: 0,
     }).format(amount);
 
+  const CustomScatterTooltip = ({ active, payload }) => {
+    if (active && payload && payload.length) {
+      const data = payload[0].payload;
+      return (
+        <div
+          style={{
+            background: "#fff",
+            border: "3px solid #1a1a1a",
+            padding: "10px",
+            borderRadius: "8px",
+            boxShadow: "4px 4px 0 #1a1a1a",
+          }}
+        >
+          <p style={{ fontWeight: "bold", margin: 0 }}>{data.name}</p>
+          <p style={{ margin: 0 }}>Precio: {formatMoney(data.x)}</p>
+          <p style={{ margin: 0 }}>Rating: {data.y} ★</p>
+        </div>
+      );
+    }
+    return null;
+  };
+
   if (loading)
     return (
       <div className="stats-view">
-        <div className="loading-state">Cargando datos...</div>
+        <div className="loading-state">Calculando datos... 🧮</div>
       </div>
     );
 
@@ -2730,56 +3110,49 @@ const Stats = ({ onBack }) => {
           ANALIZAME ESTA !!! 💥
         </motion.h1>
 
-        {/* --- BARRA DE FILTROS --- */}
+        {/* --- FILTROS --- */}
         <div className="filters-bar">
+          {/* 1. Categoría (Siempre visible) */}
           <div className="filter-group">
             <span className="filter-label">Categoría</span>
-            <select
-              className="pop-select"
-              value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
-            >
-              <option value="Todas">Todas</option>
-              {CATEGORIES.map((cat) => (
-                <option key={cat} value={cat}>
-                  {cat}
-                </option>
-              ))}
-            </select>
+            <div style={{ width: "200px" }}>
+              <PopSelect
+                options={categoryOptions}
+                value={selectedCategory}
+                onChange={setSelectedCategory}
+                placeholder="Seleccionar..."
+              />
+            </div>
           </div>
 
-          {/* Filtros de fecha solo visibles en tab Mensual */}
-          {activeTab === "month" && (
-            <>
-              <div className="filter-group">
-                <span className="filter-label">Mes</span>
-                <select
-                  className="pop-select"
-                  value={selectedMonth}
-                  onChange={(e) => setSelectedMonth(e.target.value)}
-                >
-                  {Array.from({ length: 12 }, (_, i) => (
-                    <option key={i + 1} value={i + 1}>
-                      {new Date(0, i).toLocaleString("es-ES", {
-                        month: "long",
-                      })}
-                    </option>
-                  ))}
-                </select>
-              </div>
+          {/* 2. Año (Visible en AMBAS pestañas ahora) */}
+          <div className="filter-group">
+            <span className="filter-label">Año</span>
+            <div style={{ width: "120px" }}>
+              <PopSelect
+                options={availableYears}
+                value={String(selectedYear)}
+                onChange={(val) => setSelectedYear(parseInt(val))}
+                placeholder="Año"
+              />
+            </div>
+          </div>
 
-              <div className="filter-group">
-                <span className="filter-label">Año</span>
-                <select
-                  className="pop-select"
-                  value={selectedYear}
-                  onChange={(e) => setSelectedYear(e.target.value)}
-                >
-                  <option value="2024">2024</option>
-                  <option value="2025">2025</option>
-                </select>
+          {/* 3. Mes (Solo en Pestaña Mensual) */}
+          {activeTab === "month" && (
+            <div className="filter-group">
+              <span className="filter-label">Mes</span>
+              <div style={{ width: "160px" }}>
+                <PopSelect
+                  options={monthNames}
+                  value={monthNames[selectedMonth - 1]}
+                  onChange={(val) =>
+                    setSelectedMonth(monthNames.indexOf(val) + 1)
+                  }
+                  placeholder="Mes"
+                />
               </div>
-            </>
+            </div>
           )}
         </div>
 
@@ -2795,39 +3168,38 @@ const Stats = ({ onBack }) => {
             className={`tab-btn ${activeTab === "history" ? "active" : ""}`}
             onClick={() => setActiveTab("history")}
           >
-            Histórico
+            Histórico ({selectedYear})
           </button>
         </div>
 
-        {/* --- CONTENIDO PESTAÑA: MENSUAL --- */}
+        {/* --- PESTAÑA: MENSUAL --- */}
         {activeTab === "month" && (
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.3 }}
           >
+            {/* KPI Grid */}
             <div className="kpi-grid">
               <div className="kpi-box" style={{ background: "#daf5ff" }}>
                 <div className="icon-stamp" style={{ background: "#0fbcf9" }}>
-                  <Utensils color="white" size={20} strokeWidth={3} />
+                  <Utensils color="white" size={20} />
                 </div>
                 <div className="kpi-value">{monthData.count}</div>
                 <div className="kpi-label">Salidas</div>
               </div>
-
               <div className="kpi-box" style={{ background: "#fff5da" }}>
                 <div className="icon-stamp" style={{ background: "#ffdd59" }}>
-                  <DollarSign color="black" size={20} strokeWidth={3} />
+                  <DollarSign color="black" size={20} />
                 </div>
                 <div className="kpi-value">
                   {formatMoney(monthData.totalSpent)}
                 </div>
                 <div className="kpi-label">Gastado</div>
               </div>
-
               <div className="kpi-box" style={{ background: "#ffdada" }}>
                 <div className="icon-stamp" style={{ background: "#ff5e57" }}>
-                  <Award color="white" size={20} strokeWidth={3} />
+                  <Award color="white" size={20} />
                 </div>
                 <div className="kpi-value">
                   {monthData.avgRating.toFixed(1)}
@@ -2836,26 +3208,116 @@ const Stats = ({ onBack }) => {
               </div>
             </div>
 
-            {monthData.count === 0 && (
-              <div className="empty-msg">
-                No hay registros para este mes y categoría. 😴
+            {/* Contenedor Grid para gráficos Mensuales */}
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
+                gap: "20px",
+              }}
+            >
+              {/* GRÁFICO 1: Ritmo Semanal (MOVIDO AQUÍ) */}
+              <div className="pop-card cyan">
+                <div className="card-title">
+                  <BarChartIcon size={24} strokeWidth={3} /> Ritmo Semanal
+                </div>
+                <div className="chart-container" style={{ height: 200 }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={monthData.dayOfWeekChart}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                      <XAxis
+                        dataKey="name"
+                        stroke="#1a1a1a"
+                        tick={{ fontSize: 12, fontWeight: 700 }}
+                      />
+                      <Tooltip
+                        cursor={{ fill: "rgba(0,0,0,0.05)" }}
+                        contentStyle={{
+                          border: "3px solid black",
+                          borderRadius: "8px",
+                          fontFamily: "Fredoka",
+                        }}
+                      />
+                      <Bar
+                        dataKey="count"
+                        fill="#00d2d3"
+                        radius={[4, 4, 0, 0]}
+                        stroke="#1a1a1a"
+                        strokeWidth={2}
+                      >
+                        {monthData.dayOfWeekChart.map((entry, index) => (
+                          <Cell
+                            key={`cell-${index}`}
+                            fill={entry.count > 0 ? "#00d2d3" : "#e0e0e0"}
+                          />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
               </div>
+
+              {/* GRÁFICO 2: Torta de Dieta (Si corresponde) */}
+              {monthData.count > 0 &&
+                selectedCategory === "Todas" &&
+                monthData.categoryPieData.length > 0 && (
+                  <div className="pop-card orange">
+                    <div className="card-title">
+                      <PieIcon size={24} strokeWidth={3} /> Dieta Mensual
+                    </div>
+                    <div className="chart-container" style={{ height: 200 }}>
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={monthData.categoryPieData}
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={40}
+                            outerRadius={80}
+                            paddingAngle={5}
+                            dataKey="value"
+                          >
+                            {monthData.categoryPieData.map((entry, index) => (
+                              <Cell
+                                key={`cell-${index}`}
+                                fill={COLORS[index % COLORS.length]}
+                                stroke="#1a1a1a"
+                                strokeWidth={2}
+                              />
+                            ))}
+                          </Pie>
+                          <Tooltip
+                            contentStyle={{
+                              border: "3px solid black",
+                              borderRadius: "8px",
+                              fontFamily: "Fredoka",
+                            }}
+                          />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+                )}
+            </div>
+
+            {monthData.count === 0 && (
+              <div className="empty-msg">No hay registros este mes. 😴</div>
             )}
           </motion.div>
         )}
 
-        {/* --- CONTENIDO PESTAÑA: HISTÓRICO --- */}
+        {/* --- PESTAÑA: HISTÓRICO (ANUAL) --- */}
         {activeTab === "history" && (
           <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.3 }}
           >
-            {/* KPI TOTAL HISTÓRICO */}
+            {/* KPI TOTAL ANUAL */}
             <div className="pop-card yellow">
               <div className="card-title">
-                <TrendingUp size={24} strokeWidth={3} />
-                Total Histórico ({selectedCategory})
+                <TrendingUp size={24} strokeWidth={3} /> Resumen {selectedYear}{" "}
+                ({selectedCategory})
               </div>
               <div
                 style={{
@@ -2873,7 +3335,7 @@ const Stats = ({ onBack }) => {
                       color: "#666",
                     }}
                   >
-                    GASTO TOTAL
+                    GASTO ANUAL
                   </div>
                   <div
                     style={{
@@ -2893,7 +3355,7 @@ const Stats = ({ onBack }) => {
                       color: "#666",
                     }}
                   >
-                    CANTIDAD
+                    TOTAL SALIDAS
                   </div>
                   <div
                     style={{
@@ -2908,45 +3370,43 @@ const Stats = ({ onBack }) => {
               </div>
             </div>
 
-            {/* GRÁFICO DE TENDENCIA */}
+            {/* GRÁFICO 1: Frecuencia Mensual (NUEVO) */}
             <div className="pop-card blue">
               <div className="card-title">
-                <Calendar size={24} strokeWidth={3} />
-                Evolución{" "}
-                {selectedCategory === "Todas" ? "Salidas" : selectedCategory}
+                <Calendar size={24} strokeWidth={3} /> Frecuencia Mensual
               </div>
-              <div style={{ height: 300, width: "100%" }}>
-                <ResponsiveContainer>
-                  <LineChart data={historyData.trendChart}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
+              <div className="chart-container">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={historyData.monthlyBarChart}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
                     <XAxis
-                      dataKey="shortName"
+                      dataKey="name"
                       stroke="#1a1a1a"
-                      tick={{ fontFamily: "Fredoka", fontWeight: 600 }}
+                      tick={{ fontSize: 12, fontWeight: 700 }}
                     />
-                    <YAxis stroke="#1a1a1a" tick={{ fontFamily: "Fredoka" }} />
                     <Tooltip
+                      cursor={{ fill: "rgba(0,0,0,0.05)" }}
                       contentStyle={{
                         border: "3px solid black",
                         borderRadius: "8px",
-                        boxShadow: "4px 4px 0px black",
                         fontFamily: "Fredoka",
                       }}
                     />
-                    <Line
-                      type="monotone"
+                    <Bar
                       dataKey="count"
-                      stroke="#0fbcf9"
-                      strokeWidth={4}
-                      dot={{
-                        r: 6,
-                        fill: "#1a1a1a",
-                        strokeWidth: 2,
-                        stroke: "#fff",
-                      }}
-                      activeDot={{ r: 8, fill: "#ffdd59", stroke: "#1a1a1a" }}
-                    />
-                  </LineChart>
+                      fill="#0fbcf9"
+                      radius={[4, 4, 0, 0]}
+                      stroke="#1a1a1a"
+                      strokeWidth={2}
+                    >
+                      {historyData.monthlyBarChart.map((entry, index) => (
+                        <Cell
+                          key={`cell-${index}`}
+                          fill={entry.count > 0 ? "#0fbcf9" : "#e0e0e0"}
+                        />
+                      ))}
+                    </Bar>
+                  </BarChart>
                 </ResponsiveContainer>
               </div>
             </div>
@@ -2958,11 +3418,99 @@ const Stats = ({ onBack }) => {
                 gap: "20px",
               }}
             >
-              {/* TOP PLACES */}
+              {/* GRÁFICO: DISTRIBUCIÓN DE RATING */}
               <div className="pop-card purple">
                 <div className="card-title">
-                  <Trophy size={24} strokeWidth={3} />
-                  Top {selectedCategory}
+                  <Award size={24} strokeWidth={3} /> Veredictos del Año
+                </div>
+                <div className="chart-container" style={{ height: 200 }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={historyData.ratingChart} layout="vertical">
+                      <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                      <XAxis type="number" stroke="#1a1a1a" hide />
+                      <YAxis
+                        dataKey="name"
+                        type="category"
+                        stroke="#1a1a1a"
+                        width={40}
+                        tick={{ fontWeight: "bold" }}
+                      />
+                      <Tooltip
+                        cursor={{ fill: "rgba(0,0,0,0.05)" }}
+                        contentStyle={{
+                          border: "3px solid black",
+                          borderRadius: "8px",
+                          fontFamily: "Fredoka",
+                        }}
+                      />
+                      <Bar
+                        dataKey="count"
+                        fill="#a55eea"
+                        radius={[0, 4, 4, 0]}
+                        stroke="#1a1a1a"
+                        strokeWidth={2}
+                        barSize={20}
+                      ></Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              {/* GRÁFICO: PRECIO VS CALIDAD */}
+              {historyData.scatterPoints.length > 2 && (
+                <div className="pop-card pink">
+                  <div className="card-title">
+                    <ScatterIcon size={24} strokeWidth={3} /> Precio vs. Calidad
+                  </div>
+                  <div className="chart-container" style={{ height: 200 }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <ScatterChart
+                        margin={{ top: 20, right: 20, bottom: 20, left: 0 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis
+                          type="number"
+                          dataKey="x"
+                          unit="$"
+                          stroke="#1a1a1a"
+                          tickFormatter={(val) => `$${val}`}
+                        />
+                        <YAxis
+                          type="number"
+                          dataKey="y"
+                          unit="★"
+                          stroke="#1a1a1a"
+                          domain={[1, 5]}
+                        />
+                        <ZAxis type="number" dataKey="z" range={[60, 400]} />
+                        <Tooltip content={<CustomScatterTooltip />} />
+                        <Scatter
+                          name="Lugares"
+                          data={historyData.scatterPoints}
+                          fill="#ff5e57"
+                          shape="circle"
+                          stroke="#1a1a1a"
+                          strokeWidth={2}
+                        />
+                      </ScatterChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* TOP PLACES Y EXTREMOS */}
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
+                gap: "20px",
+                marginTop: "20px",
+              }}
+            >
+              <div className="pop-card orange">
+                <div className="card-title">
+                  <Trophy size={24} strokeWidth={3} /> Top {selectedCategory}
                 </div>
                 {historyData.topPlaces.length > 0 ? (
                   <ul className="top-list">
@@ -2981,11 +3529,9 @@ const Stats = ({ onBack }) => {
                 )}
               </div>
 
-              {/* EXTREMOS (CARO / BARATO) */}
               <div className="pop-card green">
                 <div className="card-title">
-                  <AlertCircle size={24} strokeWidth={3} />
-                  Extremos
+                  <AlertCircle size={24} strokeWidth={3} /> Extremos Anuales
                 </div>
                 <div className="extremes-grid">
                   <div className="extreme-item">
@@ -3033,46 +3579,6 @@ const Stats = ({ onBack }) => {
 };
 
 export default Stats;
-</file>
-
-<file path="wrangler.jsonc">
-{
-  "name": "fifis-food-tracker",
-  "compatibility_date": "2024-12-04",
-  "assets": {
-    "directory": "./dist"
-  }
-}
-</file>
-
-<file path=".gitignore">
-# Logs
-logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
-
-node_modules
-dist
-dist-ssr
-*.local
-
-# Editor directories and files
-.vscode/*
-!.vscode/extensions.json
-.idea
-.DS_Store
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
-
-.env
-.env.local
 </file>
 
 </files>

@@ -1,10 +1,15 @@
-import { StrictMode } from 'react'
-import { createRoot } from 'react-dom/client'
-import './index.css'
-import App from './App.jsx'
+import { StrictMode } from "react";
+import { createRoot } from "react-dom/client";
+import { APIProvider } from "@vis.gl/react-google-maps"; // <--- Importar
+import "./index.css";
+import App from "./App.jsx";
 
-createRoot(document.getElementById('root')).render(
+const API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY; // <--- Tu clave nueva
+
+createRoot(document.getElementById("root")).render(
   <StrictMode>
-    <App />
-  </StrictMode>,
-)
+    <APIProvider apiKey={API_KEY} libraries={["places"]}>
+      <App />
+    </APIProvider>
+  </StrictMode>
+);

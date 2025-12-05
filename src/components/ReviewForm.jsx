@@ -15,6 +15,7 @@ import StarRating from "./StarRating";
 import { CATEGORIES } from "../constants/categories";
 import { addReview } from "../services/firestoreService";
 import "./ReviewForm.css";
+import GoogleLocationSearch from "./GoogleLocationSearch";
 
 const ReviewForm = ({ onSaveSuccess }) => {
   const [formData, setFormData] = useState({
@@ -120,17 +121,12 @@ const ReviewForm = ({ onSaveSuccess }) => {
           {/* Ubicación */}
           <div className="input-group">
             <label>Ubicación</label>
-            <div className="input-wrapper">
-              <MapPin className="input-icon" size={20} strokeWidth={3} />
-              <input
-                type="text"
-                name="location"
-                value={formData.location}
-                onChange={handleInputChange}
-                placeholder="Ej: Palermo"
-                className="modern-input"
-              />
-            </div>
+            <GoogleLocationSearch
+              value={formData.location}
+              onChange={(val) =>
+                setFormData((prev) => ({ ...prev, location: val }))
+              }
+            />
           </div>
 
           {/* Precio */}
