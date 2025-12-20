@@ -1,141 +1,196 @@
-/* global google */
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useMapsLibrary } from "@vis.gl/react-google-maps";
-import { MapPin, X, AlertTriangle } from "lucide-react";
-import "./ReviewForm.css";
+import { MapPin, X, Loader2 } from "lucide-react";
+import "./ReviewForm.css"; // Reutilizamos estilos del form
+import "./PopSelect.css"; // Reutilizamos estilos de la lista desplegable
 
 const GoogleLocationSearch = ({ value, onChange }) => {
-  // Empezamos con el valor que nos pasa el padre
   const [inputValue, setInputValue] = useState(value || "");
-  const [error, setError] = useState(false); // Para chequear si la API falla
+  const [options, setOptions] = useState([]); // Lista de predicciones
+  const [showOptions, setShowOptions] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const inputRef = useRef(null);
   const placesLibrary = useMapsLibrary("places");
-  const autocompleteRef = useRef(null);
+  const autocompleteService = useRef(null);
+  const sessionToken = useRef(null);
+  const wrapperRef = useRef(null);
 
-  // Ref para manejar onChange sin que se reinicien los efectos
-  const onChangeRef = useRef(onChange);
+  // Inicializar el servicio
   useEffect(() => {
-    onChangeRef.current = onChange;
-  }, [onChange]);
+    if (!placesLibrary) return;
 
-  // Solo sincronizamos cuando el padre cambia drásticamente, tipo al limpiar el form
-  useEffect(() => {
-    if (value === "" && inputValue !== "") {
-      setInputValue("");
-    }
-    // No incluimos 'inputValue' para evitar loops infinitos en mobile
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [value]);
-
-  useEffect(() => {
-    if (!placesLibrary || !inputRef.current) return;
-
-    // Config para Argentina, centrado en CABA
-    const center = { lat: -34.6037, lng: -58.3816 };
-    const defaultBounds = {
-      north: center.lat + 0.5,
-      south: center.lat - 0.5,
-      east: center.lng + 0.5,
-      west: center.lng - 0.5,
-    };
-
-    const opts = {
-      fields: ["name", "formatted_address"], // Pedimos solo lo mínimo para no gastar requests
-      types: ["establishment", "geocode"],
-      componentRestrictions: { country: "ar" },
-      locationBias: defaultBounds,
-    };
-
-    let listener = null;
-    try {
-      const auto = new placesLibrary.Autocomplete(inputRef.current, opts);
-      autocompleteRef.current = auto;
-
-      listener = auto.addListener("place_changed", () => {
-        const place = auto.getPlace();
-
-        if (!place.name) return;
-
-        let cleanAddress = place.name;
-        if (place.formatted_address) {
-          const addressParts = place.formatted_address.split(",");
-          if (addressParts.length > 1) {
-            cleanAddress = `${place.name}, ${addressParts[1].trim()}`;
-          }
-        }
-
-        setInputValue(cleanAddress);
-        if (onChangeRef.current) onChangeRef.current(cleanAddress);
-      });
-
-      // Manejo de errores de sesión (opcional, útil para debug)
-      // Google no tira eventos de error fáciles, pero si falla la lib lo vemos antes.
-    } catch (err) {
-      console.error("Error iniciando Autocomplete:", err);
-      setError(true);
-    }
-
-    return () => {
-      if (listener) {
-        google.maps.event.removeListener(listener);
-      }
-    };
+    autocompleteService.current = new placesLibrary.AutocompleteService();
+    sessionToken.current = new placesLibrary.AutocompleteSessionToken();
   }, [placesLibrary]);
 
-  // Handler manual para cuando el usuario escribe
+  // Cerrar lista al hacer clic fuera
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
+        setShowOptions(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // Manejar cambio en el input
   const handleInputChange = (e) => {
     const val = e.target.value;
     setInputValue(val);
-    // Avisamos al padre, pero no esperamos que nos devuelva nada
-    // Evita lag en Android
-    if (onChangeRef.current) onChangeRef.current(val);
+
+    // Si borra todo, limpiamos
+    if (!val) {
+      setOptions([]);
+      setShowOptions(false);
+      onChange(""); // Avisamos al padre que se borró
+      return;
+    }
+
+    setShowOptions(true);
+    fetchPredictions(val);
+  };
+
+  const fetchPredictions = (val) => {
+    if (!autocompleteService.current || !val) return;
+
+    setIsLoading(true);
+
+    const request = {
+      input: val,
+      sessionToken: sessionToken.current,
+      componentRestrictions: { country: "ar" }, // Solo Argentina
+      // Bias hacia CABA (Obelisco)
+      locationBias: {
+        north: -34.5,
+        south: -34.7,
+        east: -58.3,
+        west: -58.5,
+      },
+    };
+
+    autocompleteService.current.getPlacePredictions(
+      request,
+      (predictions, status) => {
+        setIsLoading(false);
+        if (status === "OK" && predictions) {
+          setOptions(predictions);
+        } else {
+          setOptions([]);
+        }
+      }
+    );
+  };
+
+  const handleSelectOption = (place) => {
+    // El texto principal suele ser el nombre del lugar
+    // La descripción completa incluye la dirección
+    const fullText = place.description;
+
+    setInputValue(fullText);
+    onChange(fullText); // Enviamos al padre
+    setShowOptions(false);
+
+    // Generar nuevo token para la siguiente búsqueda (requisito de Google para ahorrar $)
+    if (placesLibrary) {
+      sessionToken.current = new placesLibrary.AutocompleteSessionToken();
+    }
   };
 
   return (
-    <div className="input-wrapper" style={{ position: "relative" }}>
-      <MapPin className="input-icon" size={20} strokeWidth={3} />
+    <div
+      className="location-search-wrapper"
+      ref={wrapperRef}
+      style={{ position: "relative", width: "100%" }}
+    >
+      <div className="input-wrapper">
+        <MapPin className="input-icon" size={20} strokeWidth={3} />
+        <input
+          type="text"
+          value={inputValue}
+          onChange={handleInputChange}
+          onFocus={() => inputValue && setShowOptions(true)}
+          placeholder="Busca en Google Maps..."
+          className="modern-input"
+          autoComplete="off"
+        />
 
-      <input
-        ref={inputRef}
-        type="text"
-        value={inputValue}
-        onChange={handleInputChange}
-        placeholder="Busca en Google Maps..."
-        className="modern-input"
-        autoComplete="off" // Importante: evita que salga el teclado de direcciones en móviles
-        inputMode="text" // Para que los móviles sepan qué teclado mostrar
-        style={{ fontSize: "16px" }} // Evita zoom en iPhone al escribir
-      />
-
-      {/* Botón para limpiar */}
-      {inputValue && (
-        <button
-          type="button"
-          onClick={() => {
-            setInputValue("");
-            if (onChangeRef.current) onChangeRef.current("");
-            inputRef.current?.focus();
-          }}
+        {/* Loader o Botón limpiar */}
+        <div
           style={{
             position: "absolute",
-            right: "10px",
-            background: "none",
-            border: "none",
-            cursor: "pointer",
+            right: "12px",
+            top: "14px",
             zIndex: 10,
-            padding: "5px", // Área de toque más grande
           }}
         >
-          <X size={16} />
-        </button>
-      )}
-
-      {/* Icono de aviso si algo falla feo */}
-      {error && (
-        <div style={{ position: "absolute", right: "40px", color: "red" }}>
-          <AlertTriangle size={16} />
+          {isLoading ? (
+            <Loader2 className="animate-spin" size={16} />
+          ) : inputValue ? (
+            <button
+              type="button"
+              onClick={() => {
+                setInputValue("");
+                onChange("");
+                setOptions([]);
+                setShowOptions(false);
+              }}
+              style={{
+                background: "none",
+                border: "none",
+                cursor: "pointer",
+                padding: 0,
+              }}
+            >
+              <X size={16} />
+            </button>
+          ) : null}
         </div>
+      </div>
+
+      {/* LISTA DE RESULTADOS PERSONALIZADA (Estilo Pop) */}
+      {showOptions && options.length > 0 && (
+        <ul
+          className="pop-options-list"
+          style={{ maxHeight: "250px", zIndex: 1000, position: "absolute" }}
+        >
+          {options.map((place) => (
+            <li
+              key={place.place_id}
+              className="pop-option-item"
+              onClick={() => handleSelectOption(place)}
+              style={{
+                flexDirection: "column",
+                alignItems: "flex-start",
+                gap: "2px",
+                fontSize: "14px",
+              }}
+            >
+              {/* Texto principal (Nombre del lugar) */}
+              <span style={{ fontWeight: 800, color: "#1a1a1a" }}>
+                {place.structured_formatting.main_text}
+              </span>
+              {/* Texto secundario (Dirección) */}
+              <span style={{ fontSize: "12px", color: "#666" }}>
+                {place.structured_formatting.secondary_text}
+              </span>
+            </li>
+          ))}
+          {/* Logo de Google obligatorio por términos de servicio */}
+          <li
+            style={{
+              padding: "4px 10px",
+              textAlign: "right",
+              borderTop: "1px solid #eee",
+            }}
+          >
+            <img
+              src="https://developers.google.com/maps/documentation/images/powered_by_google_on_white.png"
+              alt="Powered by Google"
+              style={{ height: "12px", opacity: 0.7 }}
+            />
+          </li>
+        </ul>
       )}
     </div>
   );

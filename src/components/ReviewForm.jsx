@@ -163,7 +163,14 @@ const ReviewForm = ({ onSaveSuccess }) => {
               />
             </div>
             <div className="input-wrapper item-input-wrapper">
-              <Utensils className="input-icon" size={18} strokeWidth={3} />
+              <Utensils
+                className="input-icon"
+                size={18}
+                strokeWidth={3}
+                style={{
+                  zIndex: 0,
+                }}
+              />
               <input
                 type="text"
                 value={newItem.name}

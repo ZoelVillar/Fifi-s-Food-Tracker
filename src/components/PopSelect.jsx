@@ -12,7 +12,7 @@ const PopSelect = ({
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef(null);
 
-  // Cerrar el menú si clickeas afuera
+  // Cerrar el menú si haces clic fuera de él
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (
@@ -33,7 +33,7 @@ const PopSelect = ({
 
   return (
     <div className="pop-select-container" ref={containerRef}>
-      {/* El botón que se ve */}
+      {/* EL BOTÓN VISIBLE */}
       <div
         className={`pop-select-trigger ${isOpen ? "open" : ""}`}
         onClick={() => setIsOpen(!isOpen)}
@@ -42,7 +42,7 @@ const PopSelect = ({
         <ChevronDown className="arrow-icon" size={20} strokeWidth={3} />
       </div>
 
-      {/* El menú con animación */}
+      {/* EL MENÚ ANIMADO */}
       <AnimatePresence>
         {isOpen && (
           <motion.ul

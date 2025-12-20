@@ -1,22 +1,22 @@
-import { useState } from 'react';
-import Home from './views/Home';
-import Stats from './views/Stats';
-import './App.css';
+import { useState } from "react";
+import Home from "./views/Home";
+import Stats from "./views/Stats";
+import "./App.css";
 
 function App() {
-  const [currentView, setCurrentView] = useState('home');
+  const [currentView, setCurrentView] = useState("home");
 
   const navigateToStats = () => {
-    setCurrentView('stats');
+    setCurrentView("stats");
   };
 
   const navigateToHome = () => {
-    setCurrentView('home');
+    setCurrentView("home");
   };
 
   return (
     <div className="app">
-      {currentView === 'home' ? (
+      {currentView === "home" ? (
         <Home onNavigateToStats={navigateToStats} />
       ) : (
         <Stats onBack={navigateToHome} />
