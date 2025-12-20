@@ -74,104 +74,6 @@ wrangler.jsonc
 <files>
 This section contains the contents of the repository's files.
 
-<file path="src/components/GoogleLocationSearch.jsx">
-import { useEffect, useRef, useState } from "react";
-import { useMapsLibrary } from "@vis.gl/react-google-maps";
-import { MapPin, X } from "lucide-react";
-import "./ReviewForm.css"; // Reusamos estilos
-
-// NOTA: Este componente debe estar envuelto en un <APIProvider> en el nivel superior
-const GoogleLocationSearch = ({ value, onChange }) => {
-  const [inputValue, setInputValue] = useState(value || "");
-  const inputRef = useRef(null);
-  const placesLibrary = useMapsLibrary("places");
-  const [autocomplete, setAutocomplete] = useState(null);
-
-  useEffect(() => {
-    if (!placesLibrary || !inputRef.current) return;
-
-    // Configuración del Autocomplete
-    const opts = {
-      fields: ["geometry", "name", "formatted_address", "url"], // 'url' nos da el link directo a Maps
-      types: ["establishment", "geocode"], // Busca negocios y direcciones
-    };
-
-    const auto = new placesLibrary.Autocomplete(inputRef.current, opts);
-    setAutocomplete(auto);
-
-    // Escuchar cuando el usuario selecciona algo
-    const listener = auto.addListener("place_changed", () => {
-      const place = auto.getPlace();
-
-      if (!place.name) return; // Si no seleccionó nada válido
-
-      // Formato bonito: "Nombre, Ciudad"
-      // Google a veces devuelve el nombre completo en formatted_address, tratamos de limpiarlo
-      let cleanAddress = place.name;
-      if (place.formatted_address) {
-        // Extraer ciudad/barrio si es posible, o usar la dirección formateada
-        const addressParts = place.formatted_address.split(",");
-        if (addressParts.length > 1) {
-          cleanAddress = `${place.name}, ${addressParts[1].trim()}`;
-        }
-      }
-
-      setInputValue(cleanAddress);
-
-      // Enviamos al padre el valor limpio
-      // Opcional: Podrías enviar todo el objeto 'place' si quieres guardar lat/lng o el link
-      onChange(cleanAddress);
-    });
-
-    return () => {
-      google.maps.event.clearInstanceListeners(listener);
-    };
-  }, [placesLibrary, onChange]);
-
-  // Sincronizar si el valor externo cambia (ej: limpiar form)
-  useEffect(() => {
-    setInputValue(value);
-  }, [value]);
-
-  return (
-    <div className="input-wrapper">
-      <MapPin className="input-icon" size={20} strokeWidth={3} />
-      <input
-        ref={inputRef}
-        type="text"
-        value={inputValue}
-        onChange={(e) => {
-          setInputValue(e.target.value);
-          onChange(e.target.value);
-        }}
-        placeholder="Busca en Google Maps..."
-        className="modern-input"
-      />
-      {inputValue && (
-        <button
-          type="button"
-          onClick={() => {
-            setInputValue("");
-            onChange("");
-          }}
-          style={{
-            position: "absolute",
-            right: "10px",
-            background: "none",
-            border: "none",
-            cursor: "pointer",
-          }}
-        >
-          <X size={16} />
-        </button>
-      )}
-    </div>
-  );
-};
-
-export default GoogleLocationSearch;
-</file>
-
 <file path="eslint.config.js">
 import js from '@eslint/js'
 import globals from 'globals'
@@ -368,6 +270,137 @@ function App() {
 }
 
 export default App;
+</file>
+
+<file path="src/components/GoogleLocationSearch.jsx">
+import { useEffect, useRef, useState } from "react";
+import { useMapsLibrary } from "@vis.gl/react-google-maps";
+import { MapPin, X } from "lucide-react";
+import "./ReviewForm.css"; // Reusamos estilos
+
+const GoogleLocationSearch = ({ value, onChange }) => {
+  const [inputValue, setInputValue] = useState(value || "");
+  const inputRef = useRef(null);
+  const placesLibrary = useMapsLibrary("places");
+  const autocompleteRef = useRef(null);
+
+  // Guardamos onChange en un ref para poder llamarlo dentro del listener
+  // sin tener que meterlo en las dependencias del useEffect (esto evita el bug de reinicio)
+  const onChangeRef = useRef(onChange);
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  }, [onChange]);
+
+  useEffect(() => {
+    // Si la librería no cargó o no hay input, no hacemos nada
+    if (!placesLibrary || !inputRef.current) return;
+
+    // --- CONFIGURACIÓN INTELIGENTE (CABA/GBA) ---
+    const center = { lat: -34.6037, lng: -58.3816 }; // Coordenadas del Obelisco
+
+    // Definimos un radio de preferencia (aprox 50km a la redonda para cubrir AMBA)
+    const defaultBounds = {
+      north: center.lat + 0.5,
+      south: center.lat - 0.5,
+      east: center.lng + 0.5,
+      west: center.lng - 0.5,
+    };
+
+    const opts = {
+      fields: ["geometry", "name", "formatted_address", "url"],
+      types: ["establishment", "geocode"],
+      // 1. FILTRO DE PAÍS: Solo Argentina (Adiós Andorra)
+      componentRestrictions: { country: "ar" },
+      // 2. BIAS GEOGRÁFICO: Prioridad a Buenos Aires
+      locationBias: defaultBounds,
+    };
+
+    // Crear la instancia SOLO UNA VEZ
+    const auto = new placesLibrary.Autocomplete(inputRef.current, opts);
+    autocompleteRef.current = auto;
+
+    // Listener
+    const listener = auto.addListener("place_changed", () => {
+      const place = auto.getPlace();
+
+      if (!place.name) return;
+
+      // Limpieza de nombre
+      let cleanAddress = place.name;
+      if (place.formatted_address) {
+        const addressParts = place.formatted_address.split(",");
+        if (addressParts.length > 1) {
+          cleanAddress = `${place.name}, ${addressParts[1].trim()}`;
+        }
+      }
+
+      setInputValue(cleanAddress);
+      // Usamos el ref para llamar a la función más reciente sin romper el hook
+      if (onChangeRef.current) {
+        onChangeRef.current(cleanAddress);
+      }
+    });
+
+    // Cleanup
+    return () => {
+      if (window.google && window.google.maps) {
+        window.google.maps.event.clearInstanceListeners(listener);
+      }
+    };
+    // ¡OJO AQUÍ! Quitamos 'onChange' de las dependencias.
+    // Ahora solo se reinicia si cambia la librería (que no pasa nunca).
+  }, [placesLibrary]);
+
+  // Sincronizar si el valor viene de fuera (ej: limpiar form)
+  useEffect(() => {
+    if (value !== inputValue) {
+      setInputValue(value);
+    }
+  }, [value]);
+
+  return (
+    <div className="input-wrapper">
+      <MapPin className="input-icon" size={20} strokeWidth={3} />
+      <input
+        ref={inputRef}
+        type="text"
+        value={inputValue}
+        // Actualizamos el estado local mientras escribes para que React no se pelee con Google
+        onChange={(e) => {
+          setInputValue(e.target.value);
+          onChange(e.target.value);
+        }}
+        placeholder="Busca en Google Maps..."
+        className="modern-input"
+        // Importante: Desactivar autocompletado del navegador para que no tape al de Google
+        autoComplete="off"
+      />
+      {inputValue && (
+        <button
+          type="button"
+          onClick={() => {
+            setInputValue("");
+            onChange("");
+            // Foco de vuelta al input tras limpiar
+            if (inputRef.current) inputRef.current.focus();
+          }}
+          style={{
+            position: "absolute",
+            right: "10px",
+            background: "none",
+            border: "none",
+            cursor: "pointer",
+            zIndex: 10,
+          }}
+        >
+          <X size={16} />
+        </button>
+      )}
+    </div>
+  );
+};
+
+export default GoogleLocationSearch;
 </file>
 
 <file path="src/components/PopSelect.css">
@@ -595,24 +628,6 @@ export const CATEGORIES = [
 ];
 </file>
 
-<file path="src/main.jsx">
-import { StrictMode } from "react";
-import { createRoot } from "react-dom/client";
-import { APIProvider } from "@vis.gl/react-google-maps"; // <--- Importar
-import "./index.css";
-import App from "./App.jsx";
-
-const API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY; // <--- Tu clave nueva
-
-createRoot(document.getElementById("root")).render(
-  <StrictMode>
-    <APIProvider apiKey={API_KEY} libraries={["places"]}>
-      <App />
-    </APIProvider>
-  </StrictMode>
-);
-</file>
-
 <file path="src/services/firestoreService.js">
 import {
   collection,
@@ -711,41 +726,6 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
 })
-</file>
-
-<file path="package.json">
-{
-  "name": "fifis-prueba",
-  "private": true,
-  "version": "0.0.0",
-  "type": "module",
-  "scripts": {
-    "dev": "vite",
-    "build": "vite build && cp dist/index.html dist/404.html",
-    "lint": "eslint .",
-    "preview": "vite preview"
-  },
-  "dependencies": {
-    "@vis.gl/react-google-maps": "^1.7.1",
-    "firebase": "^12.6.0",
-    "framer-motion": "^12.23.25",
-    "lucide-react": "^0.555.0",
-    "react": "^19.2.0",
-    "react-dom": "^19.2.0",
-    "recharts": "^3.5.1"
-  },
-  "devDependencies": {
-    "@eslint/js": "^9.39.1",
-    "@types/react": "^19.2.5",
-    "@types/react-dom": "^19.2.3",
-    "@vitejs/plugin-react": "^5.1.1",
-    "eslint": "^9.39.1",
-    "eslint-plugin-react-hooks": "^7.0.1",
-    "eslint-plugin-react-refresh": "^0.4.24",
-    "globals": "^16.5.0",
-    "vite": "^7.2.4"
-  }
-}
 </file>
 
 <file path="src/components/Header.jsx">
@@ -970,386 +950,6 @@ export default Header;
 }
 </file>
 
-<file path="src/components/ReviewCard.jsx">
-import { motion } from "framer-motion";
-import { MapPin, DollarSign, Calendar } from "lucide-react";
-import StarRating from "./StarRating";
-import "./ReviewCard.css";
-
-const ReviewCard = ({ review, index }) => {
-  // Formateador de fecha
-  const formatDate = (timestamp) => {
-    if (!timestamp) return "";
-    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-    return new Intl.DateTimeFormat("es-AR", {
-      day: "numeric",
-      month: "short",
-    }).format(date); // Ej: 14 dic.
-  };
-
-  // Formateador de precio
-  const formatPrice = (price) => {
-    return new Intl.NumberFormat("es-AR", {
-      style: "currency",
-      currency: "ARS",
-      maximumFractionDigits: 0,
-    }).format(price);
-  };
-
-  return (
-    <motion.div
-      className="review-card"
-      initial={{ opacity: 0, y: 20, rotate: -1 }} // Empieza un poco chueca
-      animate={{ opacity: 1, y: 0, rotate: 0 }}
-      transition={{
-        duration: 0.4,
-        delay: index * 0.1,
-        type: "spring",
-        stiffness: 120,
-      }}
-      whileHover={{
-        scale: 1.02,
-        rotate: 1,
-        transition: { duration: 0.2 },
-      }}
-    >
-      {/* Header de la Card: Título y Estrellas */}
-      <div className="card-top">
-        <div className="place-info">
-          <h3 className="review-place">{review.placeName}</h3>
-          {review.location && (
-            <div className="location-badge">
-              <MapPin size={14} strokeWidth={3} />
-              <span>{review.location}</span>
-            </div>
-          )}
-        </div>
-        {/* Rating wrapper ahora maneja el layout de las estrellas */}
-        <div className="rating-wrapper">
-          <StarRating rating={review.rating} interactive={false} size={20} />
-        </div>
-      </div>
-
-      {/* Cuerpo: Items pedidos (Pills estilo sticker) */}
-      {review.items && review.items.length > 0 && (
-        <div className="items-container">
-          {review.items.map((item, idx) => (
-            <span key={idx} className="item-pill">
-              {item.name}
-            </span>
-          ))}
-        </div>
-      )}
-
-      {/* Texto de la reseña */}
-      {review.reviewText && (
-        <p className="review-text">"{review.reviewText}"</p>
-      )}
-
-      {/* Footer: Metadatos (Precio y Fecha) */}
-      <div className="card-footer">
-        {review.price > 0 && (
-          <div className="meta-tag price-tag">
-            <DollarSign size={16} strokeWidth={3} />
-            <span>{formatPrice(review.price)}</span>
-          </div>
-        )}
-
-        {review.timestamp && (
-          <div className="meta-tag date-tag">
-            <Calendar size={16} strokeWidth={3} />
-            <span>{formatDate(review.timestamp)}</span>
-          </div>
-        )}
-      </div>
-    </motion.div>
-  );
-};
-
-export default ReviewCard;
-</file>
-
-<file path="src/components/ReviewForm.jsx">
-import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import PopSelect from "./PopSelect";
-import {
-  Plus,
-  X,
-  Save,
-  MapPin,
-  DollarSign,
-  Store,
-  Utensils,
-  MessageSquare,
-} from "lucide-react";
-import StarRating from "./StarRating";
-import { CATEGORIES } from "../constants/categories";
-import { addReview } from "../services/firestoreService";
-import "./ReviewForm.css";
-
-const ReviewForm = ({ onSaveSuccess }) => {
-  const [formData, setFormData] = useState({
-    placeName: "",
-    location: "",
-    price: "",
-    rating: 0,
-    reviewText: "",
-    items: [],
-  });
-
-  const [loading, setLoading] = useState(false);
-  const [newItem, setNewItem] = useState({ name: "", category: "" });
-
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleAddItem = () => {
-    if (newItem.name && newItem.category) {
-      setFormData((prev) => ({
-        ...prev,
-        items: [...prev.items, { ...newItem }],
-      }));
-      setNewItem({ name: "", category: "" });
-    }
-  };
-
-  const handleRemoveItem = (index) => {
-    setFormData((prev) => ({
-      ...prev,
-      items: prev.items.filter((_, i) => i !== index),
-    }));
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!formData.placeName || formData.rating === 0) {
-      alert("¡Oye! Falta el nombre del lugar o el puntaje.");
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const reviewData = {
-        placeName: formData.placeName.trim(),
-        location: formData.location.trim(),
-        price: parseFloat(formData.price) || 0,
-        rating: formData.rating,
-        reviewText: formData.reviewText.trim(),
-        items: formData.items,
-        timestamp: new Date(),
-      };
-
-      await addReview(reviewData);
-
-      setFormData({
-        placeName: "",
-        location: "",
-        price: "",
-        rating: 0,
-        reviewText: "",
-        items: [],
-      });
-
-      if (onSaveSuccess) onSaveSuccess();
-    } catch (error) {
-      console.error("Error:", error);
-      alert("Ups, error al guardar.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.6, type: "spring" }}
-      className="form-container"
-    >
-      <form onSubmit={handleSubmit} className="review-form">
-        {/* --- SECCIÓN PRINCIPAL --- */}
-        <div className="form-grid">
-          {/* Nombre del Lugar */}
-          <div className="input-group full-width">
-            <label>Lugar</label>
-            <div className="input-wrapper">
-              <Store className="input-icon" size={20} strokeWidth={3} />
-              <input
-                type="text"
-                name="placeName"
-                value={formData.placeName}
-                onChange={handleInputChange}
-                placeholder="¿Dónde comieron hoy?"
-                required
-                className="modern-input"
-              />
-            </div>
-          </div>
-
-          {/* Ubicación */}
-          <div className="input-group">
-            <label>Ubicación</label>
-            <div className="input-wrapper">
-              <MapPin className="input-icon" size={20} strokeWidth={3} />
-              <input
-                type="text"
-                name="location"
-                value={formData.location}
-                onChange={handleInputChange}
-                placeholder="Ej: Palermo"
-                className="modern-input"
-              />
-            </div>
-          </div>
-
-          {/* Precio */}
-          <div className="input-group">
-            <label>Precio Total</label>
-            <div className="input-wrapper">
-              <DollarSign className="input-icon" size={20} strokeWidth={3} />
-              <input
-                type="number"
-                name="price"
-                value={formData.price}
-                onChange={handleInputChange}
-                placeholder="0"
-                min="0"
-                step="0.01"
-                className="modern-input"
-              />
-            </div>
-          </div>
-        </div>
-        {/* --- SECCIÓN COMIDA (ITEMS) --- */}
-        <div className="items-section">
-          <label className="section-label">¿QUÉ PIDIERON?</label>
-
-          <div className="add-item-box">
-            <div className="select-wrapper">
-              <PopSelect
-                options={CATEGORIES}
-                value={newItem.category}
-                onChange={(val) =>
-                  setNewItem((prev) => ({ ...prev, category: val }))
-                }
-                placeholder="Categoría..."
-              />
-            </div>
-            <div className="input-wrapper item-input-wrapper">
-              <Utensils className="input-icon" size={18} strokeWidth={3} />
-              <input
-                type="text"
-                value={newItem.name}
-                onChange={(e) =>
-                  setNewItem((prev) => ({ ...prev, name: e.target.value }))
-                }
-                placeholder="Plato (ej: Doble Cheddar)"
-                className="modern-input"
-                onKeyPress={(e) =>
-                  e.key === "Enter" && (e.preventDefault(), handleAddItem())
-                }
-              />
-            </div>
-
-            <button
-              type="button"
-              className="add-btn"
-              onClick={handleAddItem}
-              disabled={!newItem.name || !newItem.category}
-              title="Agregar Item"
-            >
-              <Plus size={24} strokeWidth={4} />
-            </button>
-          </div>
-
-          {/* Lista de Items Agregados (Pills) */}
-          <div className="items-list">
-            <AnimatePresence>
-              {formData.items.map((item, index) => (
-                <motion.div
-                  key={`${item.name}-${index}`}
-                  initial={{ opacity: 0, scale: 0.8, rotate: -5 }}
-                  animate={{ opacity: 1, scale: 1, rotate: 0 }}
-                  exit={{ opacity: 0, scale: 0.5 }}
-                  className="item-chip"
-                >
-                  <span className="chip-cat">{item.category}</span>
-                  <span className="chip-name">{item.name}</span>
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveItem(index)}
-                    className="chip-remove"
-                  >
-                    <X size={16} strokeWidth={3} />
-                  </button>
-                </motion.div>
-              ))}
-            </AnimatePresence>
-          </div>
-        </div>
-        {/* --- SECCIÓN PUNTAJE Y RESEÑA --- */}
-        <div className="rating-section">
-          <label
-            className="section-label centered"
-            style={{ color: "#1a1a1a", textShadow: "none" }}
-          >
-            TU VEREDICTO
-          </label>
-          <div className="rating-container">
-            <StarRating
-              rating={formData.rating}
-              onRatingChange={(r) =>
-                setFormData((prev) => ({ ...prev, rating: r }))
-              }
-              interactive={true}
-              size={36}
-            />
-          </div>
-        </div>
-        <div className="input-group">
-          <div className="input-wrapper textarea-wrapper">
-            <MessageSquare
-              className="input-icon text-icon"
-              size={20}
-              strokeWidth={3}
-            />
-            <textarea
-              name="reviewText"
-              value={formData.reviewText}
-              onChange={handleInputChange}
-              placeholder="Escribe aquí tu reseña..."
-              rows="3"
-              className="modern-textarea"
-            />
-          </div>
-        </div>
-        {/* --- BOTÓN SUBMIT --- */}
-        <motion.button
-          type="submit"
-          className="submit-btn-large"
-          disabled={loading}
-          whileTap={{ scale: 0.98 }}
-        >
-          {loading ? (
-            "Guardando..."
-          ) : (
-            <>
-              <Save size={24} strokeWidth={3} />
-              <span>Guardar Reseña</span>
-            </>
-          )}
-        </motion.button>
-      </form>
-    </motion.div>
-  );
-};
-
-export default ReviewForm;
-</file>
-
 <file path="src/components/StarRating.jsx">
 import { motion } from "framer-motion";
 import { Star } from "lucide-react";
@@ -1492,6 +1092,24 @@ select,
 textarea {
   font-family: inherit;
 }
+</file>
+
+<file path="src/main.jsx">
+import { StrictMode } from "react";
+import { createRoot } from "react-dom/client";
+import { APIProvider } from "@vis.gl/react-google-maps"; // <--- Importar
+import "./index.css";
+import App from "./App.jsx";
+
+const API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY; // <--- Tu clave nueva
+
+createRoot(document.getElementById("root")).render(
+  <StrictMode>
+    <APIProvider apiKey={API_KEY} libraries={["places"]}>
+      <App />
+    </APIProvider>
+  </StrictMode>
+);
 </file>
 
 <file path="src/views/Home.jsx">
@@ -1645,6 +1263,41 @@ dist-ssr
 .env.local
 </file>
 
+<file path="package.json">
+{
+  "name": "fifis-prueba",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build && cp dist/index.html dist/404.html",
+    "lint": "eslint .",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@vis.gl/react-google-maps": "^1.7.1",
+    "firebase": "^12.6.0",
+    "framer-motion": "^12.23.25",
+    "lucide-react": "^0.555.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "recharts": "^3.5.1"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.1",
+    "@types/react": "^19.2.5",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^5.1.1",
+    "eslint": "^9.39.1",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "eslint-plugin-react-refresh": "^0.4.24",
+    "globals": "^16.5.0",
+    "vite": "^7.2.4"
+  }
+}
+</file>
+
 <file path="src/components/Header.css">
 .app-header {
   position: sticky;
@@ -1773,6 +1426,402 @@ dist-ssr
     border-radius: 12px; /* Cuadrado redondeado en móvil */
   }
 }
+</file>
+
+<file path="src/components/ReviewCard.jsx">
+import { motion } from "framer-motion";
+import { MapPin, DollarSign, Calendar } from "lucide-react";
+import StarRating from "./StarRating";
+import "./ReviewCard.css";
+
+const ReviewCard = ({ review, index }) => {
+  const formatDate = (timestamp) => {
+    if (!timestamp) return "";
+    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+    return new Intl.DateTimeFormat("es-AR", {
+      day: "numeric",
+      month: "short",
+    }).format(date);
+  };
+
+  const formatPrice = (price) => {
+    return new Intl.NumberFormat("es-AR", {
+      style: "currency",
+      currency: "ARS",
+      maximumFractionDigits: 0,
+    }).format(price);
+  };
+
+  // Función para abrir Google Maps
+  const handleLocationClick = (e) => {
+    e.stopPropagation(); // Evita que el clic dispare otros eventos de la tarjeta
+    // Esta URL funciona en web y abre la app nativa en móviles
+    const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+      review.location
+    )}`;
+    window.open(url, "_blank", "noopener,noreferrer");
+  };
+
+  return (
+    <motion.div
+      className="review-card"
+      initial={{ opacity: 0, y: 20, rotate: -1 }}
+      animate={{ opacity: 1, y: 0, rotate: 0 }}
+      transition={{
+        duration: 0.4,
+        delay: index * 0.1,
+        type: "spring",
+        stiffness: 120,
+      }}
+      whileHover={{
+        scale: 1.02,
+        rotate: 1,
+        transition: { duration: 0.2 },
+      }}
+    >
+      <div className="card-top">
+        <div className="place-info">
+          <h3 className="review-place">{review.placeName}</h3>
+
+          {/* UBICACIÓN CLICKEABLE */}
+          {review.location && (
+            <div
+              className="location-badge"
+              onClick={handleLocationClick}
+              style={{ cursor: "pointer", transition: "transform 0.1s" }}
+              title="Ver en Google Maps"
+            >
+              <MapPin size={14} strokeWidth={3} />
+              <span
+                style={{
+                  textDecoration: "underline",
+                  textDecorationThickness: "2px",
+                }}
+              >
+                {review.location}
+              </span>
+            </div>
+          )}
+        </div>
+
+        <div className="rating-wrapper">
+          <StarRating rating={review.rating} interactive={false} size={20} />
+        </div>
+      </div>
+
+      {/* ... Resto del componente (Items, Texto, Footer) igual ... */}
+
+      {review.items && review.items.length > 0 && (
+        <div className="items-container">
+          {review.items.map((item, idx) => (
+            <span key={idx} className="item-pill">
+              {item.name}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {review.reviewText && (
+        <p className="review-text">"{review.reviewText}"</p>
+      )}
+
+      <div className="card-footer">
+        {review.price > 0 && (
+          <div className="meta-tag price-tag">
+            <DollarSign size={16} strokeWidth={3} />
+            <span>{formatPrice(review.price)}</span>
+          </div>
+        )}
+
+        {review.timestamp && (
+          <div className="meta-tag date-tag">
+            <Calendar size={16} strokeWidth={3} />
+            <span>{formatDate(review.timestamp)}</span>
+          </div>
+        )}
+      </div>
+    </motion.div>
+  );
+};
+
+export default ReviewCard;
+</file>
+
+<file path="src/components/ReviewForm.jsx">
+import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import PopSelect from "./PopSelect";
+import {
+  Plus,
+  X,
+  Save,
+  MapPin,
+  DollarSign,
+  Store,
+  Utensils,
+  MessageSquare,
+} from "lucide-react";
+import StarRating from "./StarRating";
+import { CATEGORIES } from "../constants/categories";
+import { addReview } from "../services/firestoreService";
+import "./ReviewForm.css";
+import GoogleLocationSearch from "./GoogleLocationSearch";
+
+const ReviewForm = ({ onSaveSuccess }) => {
+  const [formData, setFormData] = useState({
+    placeName: "",
+    location: "",
+    price: "",
+    rating: 0,
+    reviewText: "",
+    items: [],
+  });
+
+  const [loading, setLoading] = useState(false);
+  const [newItem, setNewItem] = useState({ name: "", category: "" });
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleAddItem = () => {
+    if (newItem.name && newItem.category) {
+      setFormData((prev) => ({
+        ...prev,
+        items: [...prev.items, { ...newItem }],
+      }));
+      setNewItem({ name: "", category: "" });
+    }
+  };
+
+  const handleRemoveItem = (index) => {
+    setFormData((prev) => ({
+      ...prev,
+      items: prev.items.filter((_, i) => i !== index),
+    }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!formData.placeName || formData.rating === 0) {
+      alert("¡Oye! Falta el nombre del lugar o el puntaje.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const reviewData = {
+        placeName: formData.placeName.trim(),
+        location: formData.location.trim(),
+        price: parseFloat(formData.price) || 0,
+        rating: formData.rating,
+        reviewText: formData.reviewText.trim(),
+        items: formData.items,
+        timestamp: new Date(),
+      };
+
+      await addReview(reviewData);
+
+      setFormData({
+        placeName: "",
+        location: "",
+        price: "",
+        rating: 0,
+        reviewText: "",
+        items: [],
+      });
+
+      if (onSaveSuccess) onSaveSuccess();
+    } catch (error) {
+      console.error("Error:", error);
+      alert("Ups, error al guardar.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.6, type: "spring" }}
+      className="form-container"
+    >
+      <form onSubmit={handleSubmit} className="review-form">
+        {/* --- SECCIÓN PRINCIPAL --- */}
+        <div className="form-grid">
+          {/* Nombre del Lugar */}
+          <div className="input-group full-width">
+            <label>Lugar</label>
+            <div className="input-wrapper">
+              <Store className="input-icon" size={20} strokeWidth={3} />
+              <input
+                type="text"
+                name="placeName"
+                value={formData.placeName}
+                onChange={handleInputChange}
+                placeholder="¿Dónde comieron hoy?"
+                required
+                className="modern-input"
+              />
+            </div>
+          </div>
+
+          {/* Ubicación */}
+          <div className="input-group">
+            <label>Ubicación</label>
+            <GoogleLocationSearch
+              value={formData.location}
+              onChange={(val) =>
+                setFormData((prev) => ({ ...prev, location: val }))
+              }
+            />
+          </div>
+
+          {/* Precio */}
+          <div className="input-group">
+            <label>Precio Total</label>
+            <div className="input-wrapper">
+              <DollarSign className="input-icon" size={20} strokeWidth={3} />
+              <input
+                type="number"
+                name="price"
+                value={formData.price}
+                onChange={handleInputChange}
+                placeholder="0"
+                min="0"
+                step="0.01"
+                className="modern-input"
+              />
+            </div>
+          </div>
+        </div>
+        {/* --- SECCIÓN COMIDA (ITEMS) --- */}
+        <div className="items-section">
+          <label className="section-label">¿QUÉ PIDIERON?</label>
+
+          <div className="add-item-box">
+            <div className="select-wrapper">
+              <PopSelect
+                options={CATEGORIES}
+                value={newItem.category}
+                onChange={(val) =>
+                  setNewItem((prev) => ({ ...prev, category: val }))
+                }
+                placeholder="Categoría..."
+              />
+            </div>
+            <div className="input-wrapper item-input-wrapper">
+              <Utensils className="input-icon" size={18} strokeWidth={3} />
+              <input
+                type="text"
+                value={newItem.name}
+                onChange={(e) =>
+                  setNewItem((prev) => ({ ...prev, name: e.target.value }))
+                }
+                placeholder="Plato (ej: Doble Cheddar)"
+                className="modern-input"
+                onKeyPress={(e) =>
+                  e.key === "Enter" && (e.preventDefault(), handleAddItem())
+                }
+              />
+            </div>
+
+            <button
+              type="button"
+              className="add-btn"
+              onClick={handleAddItem}
+              disabled={!newItem.name || !newItem.category}
+              title="Agregar Item"
+            >
+              <Plus size={24} strokeWidth={4} />
+            </button>
+          </div>
+
+          {/* Lista de Items Agregados (Pills) */}
+          <div className="items-list">
+            <AnimatePresence>
+              {formData.items.map((item, index) => (
+                <motion.div
+                  key={`${item.name}-${index}`}
+                  initial={{ opacity: 0, scale: 0.8, rotate: -5 }}
+                  animate={{ opacity: 1, scale: 1, rotate: 0 }}
+                  exit={{ opacity: 0, scale: 0.5 }}
+                  className="item-chip"
+                >
+                  <span className="chip-cat">{item.category}</span>
+                  <span className="chip-name">{item.name}</span>
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveItem(index)}
+                    className="chip-remove"
+                  >
+                    <X size={16} strokeWidth={3} />
+                  </button>
+                </motion.div>
+              ))}
+            </AnimatePresence>
+          </div>
+        </div>
+        {/* --- SECCIÓN PUNTAJE Y RESEÑA --- */}
+        <div className="rating-section">
+          <label
+            className="section-label centered"
+            style={{ color: "#1a1a1a", textShadow: "none" }}
+          >
+            TU VEREDICTO
+          </label>
+          <div className="rating-container">
+            <StarRating
+              rating={formData.rating}
+              onRatingChange={(r) =>
+                setFormData((prev) => ({ ...prev, rating: r }))
+              }
+              interactive={true}
+              size={36}
+            />
+          </div>
+        </div>
+        <div className="input-group">
+          <div className="input-wrapper textarea-wrapper">
+            <MessageSquare
+              className="input-icon text-icon"
+              size={20}
+              strokeWidth={3}
+            />
+            <textarea
+              name="reviewText"
+              value={formData.reviewText}
+              onChange={handleInputChange}
+              placeholder="Escribe aquí tu reseña..."
+              rows="3"
+              className="modern-textarea"
+            />
+          </div>
+        </div>
+        {/* --- BOTÓN SUBMIT --- */}
+        <motion.button
+          type="submit"
+          className="submit-btn-large"
+          disabled={loading}
+          whileTap={{ scale: 0.98 }}
+        >
+          {loading ? (
+            "Guardando..."
+          ) : (
+            <>
+              <Save size={24} strokeWidth={3} />
+              <span>Guardar Reseña</span>
+            </>
+          )}
+        </motion.button>
+      </form>
+    </motion.div>
+  );
+};
+
+export default ReviewForm;
 </file>
 
 <file path="src/components/StarRating.css">
