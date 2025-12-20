@@ -21,15 +21,16 @@ const ReviewCard = ({ review, index }) => {
     }).format(price);
   };
 
-  // Función para abrir en Google Maps
   const handleLocationClick = (e) => {
-    e.stopPropagation(); // Evita que el click dispare otros eventos de la card
-    // Esta URL anda en web y abre la app nativa en móviles
-    const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+    e.stopPropagation();
+    const url = `http://googleusercontent.com/maps.google.com/?q=${encodeURIComponent(
       review.location
     )}`;
     window.open(url, "_blank", "noopener,noreferrer");
   };
+
+  // Determinar si es legacy (solo rating) o nuevo (ratingFifi + ratingZozo)
+  const isLegacy = review.ratingFifi === undefined;
 
   return (
     <motion.div
@@ -51,34 +52,52 @@ const ReviewCard = ({ review, index }) => {
       <div className="card-top">
         <div className="place-info">
           <h3 className="review-place">{review.placeName}</h3>
-
-          {/* Ubicación clickeable */}
           {review.location && (
             <div
               className="location-badge"
               onClick={handleLocationClick}
-              style={{ cursor: "pointer", transition: "transform 0.1s" }}
               title="Ver en Google Maps"
             >
               <MapPin size={14} strokeWidth={3} />
-              <span
-                style={{
-                  textDecoration: "underline",
-                  textDecorationThickness: "2px",
-                }}
-              >
-                {review.location}
-              </span>
+              <span className="location-text">{review.location}</span>
             </div>
           )}
         </div>
 
-        <div className="rating-wrapper">
-          <StarRating rating={review.rating} interactive={false} size={20} />
+        {/* Sección de Ratings */}
+        <div className="rating-display-group">
+          {isLegacy ? (
+            <div className="mini-rating legacy">
+              <StarRating
+                rating={review.rating}
+                interactive={false}
+                size={18}
+              />
+            </div>
+          ) : (
+            <>
+              <div className="mini-rating fifi">
+                <span className="mini-label">F:</span>
+                <StarRating
+                  rating={review.ratingFifi}
+                  interactive={false}
+                  size={16}
+                  activeColor="#ff5e57"
+                />
+              </div>
+              <div className="mini-rating zozo">
+                <span className="mini-label">Z:</span>
+                <StarRating
+                  rating={review.ratingZozo}
+                  interactive={false}
+                  size={16}
+                  activeColor="#0fbcf9"
+                />
+              </div>
+            </>
+          )}
         </div>
       </div>
-
-      {/* ... El resto del componente (Items, Texto, Footer) igual ... */}
 
       {review.items && review.items.length > 0 && (
         <div className="items-container">

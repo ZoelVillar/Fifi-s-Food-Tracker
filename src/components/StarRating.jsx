@@ -1,4 +1,5 @@
-import { motion } from "framer-motion";
+import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { Star } from "lucide-react";
 import "./StarRating.css";
 
@@ -6,77 +7,94 @@ const StarRating = ({
   rating,
   onRatingChange,
   interactive = true,
-  size = 24,
+  size = 28,
+  activeColor = "#ffdd59", // Color por defecto (Amarillo)
 }) => {
-  const handleStarClick = (value, isHalf) => {
+  const [hoverRating, setHoverRating] = useState(0);
+  const [isAnimating, setIsAnimating] = useState(false);
+  const [lastClickedStar, setLastClickedStar] = useState(0);
+
+  const handleStarClick = (index, isHalf) => {
     if (!interactive) return;
-    const newRating = isHalf ? value - 0.5 : value;
+    const newRating = isHalf ? index - 0.5 : index;
     onRatingChange(newRating);
+
+    setLastClickedStar(Math.ceil(newRating));
+    setIsAnimating(true);
+    setTimeout(() => setIsAnimating(false), 500);
   };
 
   return (
     <div
       className={`star-rating-container ${interactive ? "interactive" : ""}`}
+      onMouseLeave={() => interactive && setHoverRating(0)}
     >
       {[1, 2, 3, 4, 5].map((index) => {
+        const currentDisplay = hoverRating || rating;
+
         let fillPercentage = 0;
-        if (rating >= index) {
+        if (currentDisplay >= index) {
           fillPercentage = 100;
-        } else if (rating >= index - 0.5) {
+        } else if (currentDisplay >= index - 0.5) {
           fillPercentage = 50;
         }
 
+        const shouldExplode = isAnimating && index === lastClickedStar;
+
         return (
-          <div
+          <motion.div
             key={index}
             className="star-wrapper"
             style={{ width: size, height: size }}
+            animate={shouldExplode ? { scale: [1, 1.4, 1] } : { scale: 1 }}
+            transition={{ duration: 0.3 }}
           >
-            {/* ZONAS DE CLIC */}
             {interactive && (
               <>
                 <button
                   type="button"
                   className="click-zone left"
                   onClick={() => handleStarClick(index, true)}
-                  aria-label={`Calificar ${index - 0.5}`}
+                  onMouseEnter={() => setHoverRating(index - 0.5)}
                 />
                 <button
                   type="button"
                   className="click-zone right"
                   onClick={() => handleStarClick(index, false)}
-                  aria-label={`Calificar ${index}`}
+                  onMouseEnter={() => setHoverRating(index)}
                 />
               </>
             )}
 
-            {/* CAPA 1: Estrella Fondo (Blanca con borde negro) */}
-            {/* strokeWidth={3} para el estilo Pop grueso */}
+            {/* Estrella Fondo (Borde) */}
             <Star size={size} className="star-bg" strokeWidth={3} />
 
-            {/* CAPA 2: Estrella Relleno (Amarilla con borde negro) */}
+            {/* Estrella Relleno (Con color dinámico) */}
             <motion.div
               className="star-fill-mask"
               initial={false}
               animate={{ width: `${fillPercentage}%` }}
-              transition={{ type: "spring", stiffness: 400, damping: 25 }}
+              transition={{ type: "tween", duration: 0.1 }}
             >
-              <Star size={size} className="star-fg" strokeWidth={3} />
+              <Star
+                size={size}
+                className="star-fg"
+                strokeWidth={3}
+                style={{ fill: activeColor }} // APLICAMOS EL COLOR AQUÍ
+              />
             </motion.div>
-          </div>
+          </motion.div>
         );
       })}
 
-      {/* Badge con el número */}
+      {/* Número al lado (Badge) */}
       {interactive && rating > 0 && (
-        <motion.span
-          initial={{ opacity: 0, scale: 0.5 }}
-          animate={{ opacity: 1, scale: 1 }}
-          key={rating}
+        <span
           className="rating-number"
+          style={{ backgroundColor: activeColor }}
         >
           {rating}
-        </motion.span>
+        </span>
       )}
     </div>
   );

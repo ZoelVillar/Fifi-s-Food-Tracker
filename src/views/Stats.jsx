@@ -17,8 +17,6 @@ import PopSelect from "../components/PopSelect";
 import { getAllReviews } from "../services/firestoreService";
 import { CATEGORIES } from "../constants/categories";
 import {
-  LineChart,
-  Line,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -91,6 +89,21 @@ const Stats = ({ onBack }) => {
     loadData();
   }, []);
 
+  // --- HELPER: Lógica de Rating Híbrido ---
+  // Obtiene el rating efectivo ya sea de registros viejos (solo rating)
+  // o nuevos (promedio de fifi/zozo si el campo 'rating' faltara)
+  const getEffectiveRating = (r) => {
+    // 1. Prioridad: Campo 'rating' ya calculado (Legacy o Nuevo guardado con promedio)
+    if (r.rating !== undefined && r.rating !== null) {
+      return parseFloat(r.rating);
+    }
+    // 2. Fallback: Calcular al vuelo si existen los individuales
+    if (r.ratingFifi !== undefined && r.ratingZozo !== undefined) {
+      return (parseFloat(r.ratingFifi) + parseFloat(r.ratingZozo)) / 2;
+    }
+    return 0;
+  };
+
   // --- LÓGICA DE AÑOS DISPONIBLES (Requerimiento 3) ---
   const availableYears = useMemo(() => {
     const currentYear = new Date().getFullYear();
@@ -149,9 +162,11 @@ const Stats = ({ onBack }) => {
       (acc, curr) => acc + (curr.price || 0),
       0
     );
+
+    // MODIFICADO: Uso de getEffectiveRating
     const avgRating =
       filtered.length > 0
-        ? filtered.reduce((acc, curr) => acc + (curr.rating || 0), 0) /
+        ? filtered.reduce((acc, curr) => acc + getEffectiveRating(curr), 0) /
           filtered.length
         : 0;
 
@@ -225,16 +240,17 @@ const Stats = ({ onBack }) => {
       // Conteo por Mes (Ene, Feb...)
       monthsMap[date.getMonth()] += 1;
 
-      // Rating
-      const roundedRating = Math.round(r.rating || 0);
+      // Rating (MODIFICADO: Uso de getEffectiveRating)
+      const effectiveVal = getEffectiveRating(r);
+      const roundedRating = Math.round(effectiveVal || 0);
       if (roundedRating >= 1 && roundedRating <= 5)
         ratingMap[roundedRating] += 1;
 
-      // Scatter
-      if (price > 0 && r.rating > 0) {
+      // Scatter (MODIFICADO: Uso de getEffectiveRating)
+      if (price > 0 && effectiveVal > 0) {
         scatterPoints.push({
           x: price,
-          y: r.rating,
+          y: parseFloat(effectiveVal.toFixed(1)), // Redondear visualmente
           z: 10,
           name: r.placeName || "Lugar",
         });
@@ -452,7 +468,7 @@ const Stats = ({ onBack }) => {
                 gap: "20px",
               }}
             >
-              {/* GRÁFICO 1: Ritmo Semanal (MOVIDO AQUÍ) */}
+              {/* GRÁFICO 1: Ritmo Semanal */}
               <div className="pop-card cyan">
                 <div className="card-title">
                   <BarChartIcon size={24} strokeWidth={3} /> Ritmo Semanal
@@ -606,7 +622,7 @@ const Stats = ({ onBack }) => {
               </div>
             </div>
 
-            {/* GRÁFICO 1: Frecuencia Mensual (NUEVO) */}
+            {/* GRÁFICO 1: Frecuencia Mensual */}
             <div className="pop-card blue">
               <div className="card-title">
                 <Calendar size={24} strokeWidth={3} /> Frecuencia Mensual

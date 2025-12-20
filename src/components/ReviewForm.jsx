@@ -5,7 +5,6 @@ import {
   Plus,
   X,
   Save,
-  MapPin,
   DollarSign,
   Store,
   Utensils,
@@ -22,7 +21,8 @@ const ReviewForm = ({ onSaveSuccess }) => {
     placeName: "",
     location: "",
     price: "",
-    rating: 0,
+    ratingFifi: 0, // Nuevo estado
+    ratingZozo: 0, // Nuevo estado
     reviewText: "",
     items: [],
   });
@@ -54,8 +54,15 @@ const ReviewForm = ({ onSaveSuccess }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.placeName || formData.rating === 0) {
-      alert("Pelotudo! Falta el nombre del lugar o el rating.");
+    // Validación: Ambos deben votar
+    if (
+      !formData.placeName ||
+      formData.ratingFifi === 0 ||
+      formData.ratingZozo === 0
+    ) {
+      alert(
+        "¡Ojo! Faltan datos: Nombre del lugar o alguno de los dos no votó."
+      );
       return;
     }
 
@@ -65,7 +72,8 @@ const ReviewForm = ({ onSaveSuccess }) => {
         placeName: formData.placeName.trim(),
         location: formData.location.trim(),
         price: parseFloat(formData.price) || 0,
-        rating: formData.rating,
+        ratingFifi: formData.ratingFifi,
+        ratingZozo: formData.ratingZozo,
         reviewText: formData.reviewText.trim(),
         items: formData.items,
         timestamp: new Date(),
@@ -77,7 +85,8 @@ const ReviewForm = ({ onSaveSuccess }) => {
         placeName: "",
         location: "",
         price: "",
-        rating: 0,
+        ratingFifi: 0,
+        ratingZozo: 0,
         reviewText: "",
         items: [],
       });
@@ -147,6 +156,7 @@ const ReviewForm = ({ onSaveSuccess }) => {
             </div>
           </div>
         </div>
+
         {/* --- Sección comida (items) --- */}
         <div className="items-section">
           <label className="section-label">¿QUÉ PIDIERON?</label>
@@ -167,9 +177,7 @@ const ReviewForm = ({ onSaveSuccess }) => {
                 className="input-icon"
                 size={18}
                 strokeWidth={3}
-                style={{
-                  zIndex: 0,
-                }}
+                style={{ zIndex: 0 }}
               />
               <input
                 type="text"
@@ -196,7 +204,6 @@ const ReviewForm = ({ onSaveSuccess }) => {
             </button>
           </div>
 
-          {/* Lista de items agregados (pills) */}
           <div className="items-list">
             <AnimatePresence>
               {formData.items.map((item, index) => (
@@ -221,25 +228,51 @@ const ReviewForm = ({ onSaveSuccess }) => {
             </AnimatePresence>
           </div>
         </div>
-        {/* --- Sección rating y reseña --- */}
+
+        {/* --- Sección rating DOBLE --- */}
         <div className="rating-section">
           <label
             className="section-label centered"
             style={{ color: "#1a1a1a", textShadow: "none" }}
           >
-            TU VEREDICTO
+            DOBLE VEREDICTO
           </label>
-          <div className="rating-container">
-            <StarRating
-              rating={formData.rating}
-              onRatingChange={(r) =>
-                setFormData((prev) => ({ ...prev, rating: r }))
-              }
-              interactive={true}
-              size={36}
-            />
+
+          <div className="dual-rating-container">
+            {/* Rating Fifi */}
+            <div className="rating-column">
+              <span className="rating-label-text">Fifi</span>
+              <div className="rating-pill fifi-theme">
+                <StarRating
+                  rating={formData.ratingFifi}
+                  onRatingChange={(r) =>
+                    setFormData((prev) => ({ ...prev, ratingFifi: r }))
+                  }
+                  interactive={true}
+                  size={32}
+                  activeColor="#ff5e57" // Rosa para Fifi
+                />
+              </div>
+            </div>
+
+            {/* Rating Zozo */}
+            <div className="rating-column">
+              <span className="rating-label-text">Zozo</span>
+              <div className="rating-pill zozo-theme">
+                <StarRating
+                  rating={formData.ratingZozo}
+                  onRatingChange={(r) =>
+                    setFormData((prev) => ({ ...prev, ratingZozo: r }))
+                  }
+                  interactive={true}
+                  size={32}
+                  activeColor="#0fbcf9" // Azul para Zozo
+                />
+              </div>
+            </div>
           </div>
         </div>
+
         <div className="input-group">
           <div className="input-wrapper textarea-wrapper">
             <MessageSquare
@@ -251,12 +284,13 @@ const ReviewForm = ({ onSaveSuccess }) => {
               name="reviewText"
               value={formData.reviewText}
               onChange={handleInputChange}
-              placeholder="Escribe aquí tu reseña..."
+              placeholder="Comentarios adicionales, chismes, quejas..."
               rows="3"
               className="modern-textarea"
             />
           </div>
         </div>
+
         {/* --- Botón submit --- */}
         <motion.button
           type="submit"
