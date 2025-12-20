@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import PopSelect from "./PopSelect";
 import {
@@ -9,26 +9,50 @@ import {
   Store,
   Utensils,
   MessageSquare,
+  RotateCcw, // Icono para cancelar
+  Pencil, // Icono para indicar edición
 } from "lucide-react";
 import StarRating from "./StarRating";
 import { CATEGORIES } from "../constants/categories";
-import { addReview } from "../services/firestoreService";
+import { addReview, updateReview } from "../services/firestoreService";
 import "./ReviewForm.css";
 import GoogleLocationSearch from "./GoogleLocationSearch";
 
-const ReviewForm = ({ onSaveSuccess }) => {
-  const [formData, setFormData] = useState({
+const ReviewForm = ({ onSaveSuccess, editingReview, onCancelEdit }) => {
+  // Estado inicial vacío
+  const initialFormState = {
     placeName: "",
     location: "",
     price: "",
-    ratingFifi: 0, // Nuevo estado
-    ratingZozo: 0, // Nuevo estado
+    ratingFifi: 0,
+    ratingZozo: 0,
     reviewText: "",
     items: [],
-  });
+  };
 
+  const [formData, setFormData] = useState(initialFormState);
   const [loading, setLoading] = useState(false);
   const [newItem, setNewItem] = useState({ name: "", category: "" });
+
+  // Efecto: Cuando recibimos una review para editar, llenamos el formulario
+  useEffect(() => {
+    if (editingReview) {
+      setFormData({
+        placeName: editingReview.placeName || "",
+        location: editingReview.location || "",
+        price: editingReview.price || "",
+        // Manejo de compatibilidad legacy:
+        ratingFifi: editingReview.ratingFifi || editingReview.rating || 0,
+        ratingZozo: editingReview.ratingZozo || editingReview.rating || 0,
+        reviewText: editingReview.reviewText || "",
+        items: editingReview.items || [],
+      });
+      // Scroll suave hacia el formulario
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } else {
+      setFormData(initialFormState);
+    }
+  }, [editingReview]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -54,21 +78,18 @@ const ReviewForm = ({ onSaveSuccess }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    // Validación: Ambos deben votar
     if (
       !formData.placeName ||
       formData.ratingFifi === 0 ||
       formData.ratingZozo === 0
     ) {
-      alert(
-        "¡Ojo! Faltan datos: Nombre del lugar o alguno de los dos no votó."
-      );
+      alert("¡Ojo! Faltan datos (Lugar o Votos).");
       return;
     }
 
     setLoading(true);
     try {
-      const reviewData = {
+      const dataToSave = {
         placeName: formData.placeName.trim(),
         location: formData.location.trim(),
         price: parseFloat(formData.price) || 0,
@@ -76,21 +97,20 @@ const ReviewForm = ({ onSaveSuccess }) => {
         ratingZozo: formData.ratingZozo,
         reviewText: formData.reviewText.trim(),
         items: formData.items,
-        timestamp: new Date(),
       };
 
-      await addReview(reviewData);
+      if (editingReview) {
+        // MODO EDICIÓN
+        await updateReview(editingReview.id, dataToSave);
+      } else {
+        // MODO CREACIÓN
+        await addReview({
+          ...dataToSave,
+          timestamp: new Date(), // Solo agregamos fecha si es nuevo
+        });
+      }
 
-      setFormData({
-        placeName: "",
-        location: "",
-        price: "",
-        ratingFifi: 0,
-        ratingZozo: 0,
-        reviewText: "",
-        items: [],
-      });
-
+      setFormData(initialFormState);
       if (onSaveSuccess) onSaveSuccess();
     } catch (error) {
       console.error("Error:", error);
@@ -105,12 +125,22 @@ const ReviewForm = ({ onSaveSuccess }) => {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.6, type: "spring" }}
-      className="form-container"
+      className={`form-container ${editingReview ? "editing-mode" : ""}`}
     >
+      {/* Indicador visual de Edición */}
+      {editingReview && (
+        <div className="editing-banner">
+          <Pencil size={16} />
+          <span>Editando: {editingReview.placeName}</span>
+          <button type="button" onClick={onCancelEdit} className="cancel-x">
+            <X size={16} />
+          </button>
+        </div>
+      )}
+
       <form onSubmit={handleSubmit} className="review-form">
-        {/* --- Sección principal --- */}
+        {/* ... (Todo el contenido del Grid de inputs, location, etc. IGUAL al anterior) ... */}
         <div className="form-grid">
-          {/* Nombre del lugar */}
           <div className="input-group full-width">
             <label>Lugar</label>
             <div className="input-wrapper">
@@ -127,7 +157,6 @@ const ReviewForm = ({ onSaveSuccess }) => {
             </div>
           </div>
 
-          {/* Ubicación */}
           <div className="input-group">
             <label>Ubicación</label>
             <GoogleLocationSearch
@@ -138,7 +167,6 @@ const ReviewForm = ({ onSaveSuccess }) => {
             />
           </div>
 
-          {/* Precio */}
           <div className="input-group">
             <label>Precio Total</label>
             <div className="input-wrapper">
@@ -157,10 +185,9 @@ const ReviewForm = ({ onSaveSuccess }) => {
           </div>
         </div>
 
-        {/* --- Sección comida (items) --- */}
+        {/* --- Items Section (Igual) --- */}
         <div className="items-section">
           <label className="section-label">¿QUÉ PIDIERON?</label>
-
           <div className="add-item-box">
             <div className="select-wrapper">
               <PopSelect
@@ -185,32 +212,29 @@ const ReviewForm = ({ onSaveSuccess }) => {
                 onChange={(e) =>
                   setNewItem((prev) => ({ ...prev, name: e.target.value }))
                 }
-                placeholder="Plato (ej: Doble Cheddar)"
+                placeholder="Plato..."
                 className="modern-input"
                 onKeyPress={(e) =>
                   e.key === "Enter" && (e.preventDefault(), handleAddItem())
                 }
               />
             </div>
-
             <button
               type="button"
               className="add-btn"
               onClick={handleAddItem}
               disabled={!newItem.name || !newItem.category}
-              title="Agregar Item"
             >
               <Plus size={24} strokeWidth={4} />
             </button>
           </div>
-
           <div className="items-list">
             <AnimatePresence>
               {formData.items.map((item, index) => (
                 <motion.div
                   key={`${item.name}-${index}`}
-                  initial={{ opacity: 0, scale: 0.8, rotate: -5 }}
-                  animate={{ opacity: 1, scale: 1, rotate: 0 }}
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.5 }}
                   className="item-chip"
                 >
@@ -229,7 +253,7 @@ const ReviewForm = ({ onSaveSuccess }) => {
           </div>
         </div>
 
-        {/* --- Sección rating DOBLE --- */}
+        {/* --- Ratings (Igual) --- */}
         <div className="rating-section">
           <label
             className="section-label centered"
@@ -237,9 +261,7 @@ const ReviewForm = ({ onSaveSuccess }) => {
           >
             DOBLE VEREDICTO
           </label>
-
           <div className="dual-rating-container">
-            {/* Rating Fifi */}
             <div className="rating-column">
               <span className="rating-label-text">Fifi</span>
               <div className="rating-pill fifi-theme">
@@ -250,12 +272,10 @@ const ReviewForm = ({ onSaveSuccess }) => {
                   }
                   interactive={true}
                   size={32}
-                  activeColor="#ff5e57" // Rosa para Fifi
+                  activeColor="#ff5e57"
                 />
               </div>
             </div>
-
-            {/* Rating Zozo */}
             <div className="rating-column">
               <span className="rating-label-text">Zozo</span>
               <div className="rating-pill zozo-theme">
@@ -266,7 +286,7 @@ const ReviewForm = ({ onSaveSuccess }) => {
                   }
                   interactive={true}
                   size={32}
-                  activeColor="#0fbcf9" // Azul para Zozo
+                  activeColor="#0fbcf9"
                 />
               </div>
             </div>
@@ -284,29 +304,48 @@ const ReviewForm = ({ onSaveSuccess }) => {
               name="reviewText"
               value={formData.reviewText}
               onChange={handleInputChange}
-              placeholder="Comentarios adicionales, chismes, quejas..."
+              placeholder="Comentarios..."
               rows="3"
               className="modern-textarea"
             />
           </div>
         </div>
 
-        {/* --- Botón submit --- */}
-        <motion.button
-          type="submit"
-          className="submit-btn-large"
-          disabled={loading}
-          whileTap={{ scale: 0.98 }}
-        >
-          {loading ? (
-            "Guardando..."
-          ) : (
-            <>
-              <Save size={24} strokeWidth={3} />
-              <span>Guardar Reseña</span>
-            </>
+        {/* --- Botones de Acción --- */}
+        <div className="form-actions">
+          {editingReview && (
+            <button
+              type="button"
+              className="cancel-btn"
+              onClick={onCancelEdit}
+              disabled={loading}
+            >
+              <RotateCcw size={20} strokeWidth={3} />
+              Cancelar
+            </button>
           )}
-        </motion.button>
+
+          <motion.button
+            type="submit"
+            className={`submit-btn-large ${editingReview ? "is-editing" : ""}`}
+            disabled={loading}
+            whileTap={{ scale: 0.98 }}
+          >
+            {loading ? (
+              "Procesando..."
+            ) : editingReview ? (
+              <>
+                <Save size={24} strokeWidth={3} />
+                <span>Actualizar Reseña</span>
+              </>
+            ) : (
+              <>
+                <Save size={24} strokeWidth={3} />
+                <span>Guardar Reseña</span>
+              </>
+            )}
+          </motion.button>
+        </div>
       </form>
     </motion.div>
   );

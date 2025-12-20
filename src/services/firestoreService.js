@@ -1,6 +1,9 @@
 import {
   collection,
   addDoc,
+  updateDoc,
+  deleteDoc,
+  doc,
   getDocs,
   query,
   orderBy,
@@ -65,6 +68,38 @@ export const getAllReviews = async () => {
     }));
   } catch (error) {
     console.error("Error getting all reviews:", error);
+    throw error;
+  }
+};
+
+export const updateReview = async (id, updatedData) => {
+  try {
+    const reviewRef = doc(db, COLLECTION_NAME, id);
+
+    // Recalculamos el promedio para mantener consistencia
+    const ratingFifi = parseFloat(updatedData.ratingFifi) || 0;
+    const ratingZozo = parseFloat(updatedData.ratingZozo) || 0;
+    const avgRating = (ratingFifi + ratingZozo) / 2;
+
+    await updateDoc(reviewRef, {
+      ...updatedData,
+      ratingFifi,
+      ratingZozo,
+      rating: avgRating,
+      // No tocamos el timestamp original para que no salte al inicio del feed
+    });
+  } catch (error) {
+    console.error("Error updating review:", error);
+    throw error;
+  }
+};
+
+// Eliminar reseña
+export const deleteReview = async (id) => {
+  try {
+    await deleteDoc(doc(db, COLLECTION_NAME, id));
+  } catch (error) {
+    console.error("Error deleting review:", error);
     throw error;
   }
 };

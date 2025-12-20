@@ -1,9 +1,9 @@
 import { motion } from "framer-motion";
-import { MapPin, DollarSign, Calendar } from "lucide-react";
+import { MapPin, DollarSign, Calendar, Pencil, Trash2 } from "lucide-react"; // Importar nuevos iconos
 import StarRating from "./StarRating";
 import "./ReviewCard.css";
 
-const ReviewCard = ({ review, index }) => {
+const ReviewCard = ({ review, index, onEdit, onDelete }) => {
   const formatDate = (timestamp) => {
     if (!timestamp) return "";
     const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
@@ -29,8 +29,24 @@ const ReviewCard = ({ review, index }) => {
     window.open(url, "_blank", "noopener,noreferrer");
   };
 
-  // Determinar si es legacy (solo rating) o nuevo (ratingFifi + ratingZozo)
   const isLegacy = review.ratingFifi === undefined;
+
+  // Manejadores para evitar propagación (que no se active el hover de la card raro)
+  const handleEditClick = (e) => {
+    e.stopPropagation();
+    onEdit(review);
+  };
+
+  const handleDeleteClick = (e) => {
+    e.stopPropagation();
+    if (
+      window.confirm(
+        `¿Seguro que querés borrar la reseña de "${review.placeName}"? 🗑️`
+      )
+    ) {
+      onDelete(review.id);
+    }
+  };
 
   return (
     <motion.div
@@ -64,7 +80,6 @@ const ReviewCard = ({ review, index }) => {
           )}
         </div>
 
-        {/* Sección de Ratings */}
         <div className="rating-display-group">
           {isLegacy ? (
             <div className="mini-rating legacy">
@@ -114,19 +129,38 @@ const ReviewCard = ({ review, index }) => {
       )}
 
       <div className="card-footer">
-        {review.price > 0 && (
-          <div className="meta-tag price-tag">
-            <DollarSign size={16} strokeWidth={3} />
-            <span>{formatPrice(review.price)}</span>
-          </div>
-        )}
+        <div className="meta-group">
+          {review.price > 0 && (
+            <div className="meta-tag price-tag">
+              <DollarSign size={16} strokeWidth={3} />
+              <span>{formatPrice(review.price)}</span>
+            </div>
+          )}
+          {review.timestamp && (
+            <div className="meta-tag date-tag">
+              <Calendar size={16} strokeWidth={3} />
+              <span>{formatDate(review.timestamp)}</span>
+            </div>
+          )}
+        </div>
 
-        {review.timestamp && (
-          <div className="meta-tag date-tag">
-            <Calendar size={16} strokeWidth={3} />
-            <span>{formatDate(review.timestamp)}</span>
-          </div>
-        )}
+        {/* --- BOTONES DE ACCIÓN --- */}
+        <div className="action-buttons">
+          <button
+            className="action-btn edit-btn"
+            onClick={handleEditClick}
+            title="Editar"
+          >
+            <Pencil size={18} strokeWidth={3} />
+          </button>
+          <button
+            className="action-btn delete-btn"
+            onClick={handleDeleteClick}
+            title="Eliminar"
+          >
+            <Trash2 size={18} strokeWidth={3} />
+          </button>
+        </div>
       </div>
     </motion.div>
   );

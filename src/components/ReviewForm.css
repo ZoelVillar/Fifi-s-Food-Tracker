@@ -393,3 +393,77 @@
     padding: 6px 10px;
   }
 }
+
+.editing-banner {
+  background: #ff9f43; /* Naranja */
+  color: #1a1a1a;
+  padding: 10px 20px;
+  border-radius: 12px 12px 0 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+  border: 3px solid #1a1a1a;
+  border-bottom: none;
+  margin-bottom: -3px; /* Pegarlo al form */
+  position: relative;
+  z-index: 0;
+}
+
+.cancel-x {
+  margin-left: auto;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+}
+
+/* Ajustes del contenedor cuando edita */
+.form-container.editing-mode .review-form {
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+  border-color: #1a1a1a;
+}
+
+/* Acciones del Formulario */
+.form-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.cancel-btn {
+  flex: 1;
+  background: #e1e1e1;
+  color: #666;
+  border: 3px solid #999;
+  border-radius: 16px;
+  font-family: "Fredoka", sans-serif;
+  font-weight: 700;
+  font-size: 18px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.2s;
+}
+
+.cancel-btn:hover {
+  background: #d1d1d1;
+}
+
+/* Modificar el botón submit para compartir espacio si hay cancelar */
+.submit-btn-large {
+  flex: 2; /* Ocupa más espacio */
+  margin-top: 0; /* Quitamos el margin viejo */
+}
+
+/* Color especial para el botón cuando actualiza */
+.submit-btn-large.is-editing {
+  background: #ff9f43; /* Naranja */
+}
+
+.submit-btn-large.is-editing:hover:not(:disabled) {
+  background: #ffaf40;
+}

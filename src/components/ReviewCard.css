@@ -211,3 +211,70 @@
   font-size: 12px;
   color: #1a1a1a;
 }
+
+.card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between; /* Separar info de botones */
+  gap: 12px;
+  padding-top: 16px;
+  border-top: 3px solid #1a1a1a;
+}
+
+.meta-group {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* --- ACTION BUTTONS --- */
+.action-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  border: 2px solid #1a1a1a;
+  cursor: pointer;
+  box-shadow: 2px 2px 0px #1a1a1a;
+  transition: all 0.1s;
+}
+
+.action-btn:active {
+  transform: translate(2px, 2px);
+  box-shadow: 0px 0px 0px #1a1a1a;
+}
+
+.edit-btn {
+  background: #ffdd59; /* Amarillo */
+  color: #1a1a1a;
+}
+
+.delete-btn {
+  background: #ff5e57; /* Rojo */
+  color: #fff;
+}
+
+@media (max-width: 480px) {
+  .card-footer {
+    flex-wrap: wrap;
+  }
+
+  .meta-group {
+    width: 100%;
+    order: 2; /* En móvil, fecha y precio abajo */
+  }
+
+  .action-buttons {
+    width: 100%;
+    justify-content: flex-end;
+    order: 1; /* Botones arriba del footer para acceso fácil */
+    margin-bottom: 8px;
+  }
+}
