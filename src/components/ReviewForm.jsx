@@ -34,14 +34,14 @@ const ReviewForm = ({ onSaveSuccess, editingReview, onCancelEdit }) => {
   const [loading, setLoading] = useState(false);
   const [newItem, setNewItem] = useState({ name: "", category: "" });
 
-  // Efecto: Cuando recibimos una review para editar, llenamos el formulario
+  // Cuando recibimos una review para editar, llenamos el formulario
   useEffect(() => {
     if (editingReview) {
       setFormData({
         placeName: editingReview.placeName || "",
         location: editingReview.location || "",
         price: editingReview.price || "",
-        // Manejo de compatibilidad legacy:
+        // Compatibilidad con ratings viejos
         ratingFifi: editingReview.ratingFifi || editingReview.rating || 0,
         ratingZozo: editingReview.ratingZozo || editingReview.rating || 0,
         reviewText: editingReview.reviewText || "",
@@ -100,10 +100,10 @@ const ReviewForm = ({ onSaveSuccess, editingReview, onCancelEdit }) => {
       };
 
       if (editingReview) {
-        // MODO EDICIÓN
+        // Modo edición
         await updateReview(editingReview.id, dataToSave);
       } else {
-        // MODO CREACIÓN
+        // Modo creación
         await addReview({
           ...dataToSave,
           timestamp: new Date(), // Solo agregamos fecha si es nuevo
@@ -127,7 +127,7 @@ const ReviewForm = ({ onSaveSuccess, editingReview, onCancelEdit }) => {
       transition={{ duration: 0.6, type: "spring" }}
       className={`form-container ${editingReview ? "editing-mode" : ""}`}
     >
-      {/* Indicador visual de Edición */}
+      {/* Indicador visual de edición */}
       {editingReview && (
         <div className="editing-banner">
           <Pencil size={16} />
@@ -139,7 +139,7 @@ const ReviewForm = ({ onSaveSuccess, editingReview, onCancelEdit }) => {
       )}
 
       <form onSubmit={handleSubmit} className="review-form">
-        {/* ... (Todo el contenido del Grid de inputs, location, etc. IGUAL al anterior) ... */}
+        {/* Grid de inputs */}
         <div className="form-grid">
           <div className="input-group full-width">
             <label>Lugar</label>
@@ -185,7 +185,7 @@ const ReviewForm = ({ onSaveSuccess, editingReview, onCancelEdit }) => {
           </div>
         </div>
 
-        {/* --- Items Section (Igual) --- */}
+        {/* Sección de items */}
         <div className="items-section">
           <label className="section-label">¿QUÉ PIDIERON?</label>
           <div className="add-item-box">
@@ -253,7 +253,7 @@ const ReviewForm = ({ onSaveSuccess, editingReview, onCancelEdit }) => {
           </div>
         </div>
 
-        {/* --- Ratings (Igual) --- */}
+        {/* Sección de ratings */}
         <div className="rating-section">
           <label
             className="section-label centered"
@@ -311,7 +311,7 @@ const ReviewForm = ({ onSaveSuccess, editingReview, onCancelEdit }) => {
           </div>
         </div>
 
-        {/* --- Botones de Acción --- */}
+        {/* Botones de acción */}
         <div className="form-actions">
           {editingReview && (
             <button

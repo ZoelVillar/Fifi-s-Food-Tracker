@@ -34,7 +34,7 @@ import {
 } from "recharts";
 import "./Stats.css";
 
-// Paleta de colores para gráficos (Estilo Pop)
+// Paleta de colores para gráficos (estilo pop)
 const COLORS = [
   "#0fbcf9",
   "#ffdd59",
@@ -65,7 +65,7 @@ const Stats = ({ onBack }) => {
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // --- ESTADOS DE LA UI ---
+  // --- Estados de la UI ---
   const [activeTab, setActiveTab] = useState("month"); // 'month' | 'history'
   const [selectedCategory, setSelectedCategory] = useState("Todas");
 
@@ -90,22 +90,19 @@ const Stats = ({ onBack }) => {
     loadData();
   }, []);
 
-  // --- HELPER: Lógica de Rating Híbrido ---
-  // Obtiene el rating efectivo ya sea de registros viejos (solo rating)
-  // o nuevos (promedio de fifi/zozo si el campo 'rating' faltara)
+  // Helper para rating híbrido
   const getEffectiveRating = (r) => {
-    // 1. Prioridad: Campo 'rating' ya calculado (Legacy o Nuevo guardado con promedio)
     if (r.rating !== undefined && r.rating !== null) {
       return parseFloat(r.rating);
     }
-    // 2. Fallback: Calcular al vuelo si existen los individuales
+    // Fallback: calcular promedio si hay individuales
     if (r.ratingFifi !== undefined && r.ratingZozo !== undefined) {
       return (parseFloat(r.ratingFifi) + parseFloat(r.ratingZozo)) / 2;
     }
     return 0;
   };
 
-  // --- LÓGICA DE AÑOS DISPONIBLES (Requerimiento 3) ---
+  // Años disponibles
   const availableYears = useMemo(() => {
     const currentYear = new Date().getFullYear();
     if (reviews.length === 0) return [String(currentYear)];
@@ -129,7 +126,7 @@ const Stats = ({ onBack }) => {
       .map(String);
   }, [reviews]);
 
-  // --- LÓGICA DE DATOS ---
+  // --- Lógica de datos ---
 
   // 1. Filtro base por CATEGORÍA
   const categoryFilteredReviews = useMemo(() => {

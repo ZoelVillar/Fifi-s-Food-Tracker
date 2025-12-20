@@ -1,12 +1,13 @@
 import { useEffect, useState, useRef } from "react";
 import { useMapsLibrary } from "@vis.gl/react-google-maps";
 import { MapPin, X, Loader2 } from "lucide-react";
-import "./ReviewForm.css"; // Reutilizamos estilos del form
-import "./PopSelect.css"; // Reutilizamos estilos de la lista desplegable
+import "./ReviewForm.css";
+import "./PopSelect.css";
 
 const GoogleLocationSearch = ({ value, onChange }) => {
+  // Empezamos con el valor que nos pasan
   const [inputValue, setInputValue] = useState(value || "");
-  const [options, setOptions] = useState([]); // Lista de predicciones
+  const [options, setOptions] = useState([]);
   const [showOptions, setShowOptions] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -15,15 +16,19 @@ const GoogleLocationSearch = ({ value, onChange }) => {
   const sessionToken = useRef(null);
   const wrapperRef = useRef(null);
 
-  // Inicializar el servicio
+  // Sincronizar con el padre: si limpia el valor, nosotros también
+  useEffect(() => {
+    setInputValue(value || "");
+  }, [value]);
+
+  // Inicializar servicio de Google Places
   useEffect(() => {
     if (!placesLibrary) return;
-
     autocompleteService.current = new placesLibrary.AutocompleteService();
     sessionToken.current = new placesLibrary.AutocompleteSessionToken();
   }, [placesLibrary]);
 
-  // Cerrar lista al hacer clic fuera
+  // Cerrar lista si clickean afuera
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
@@ -34,18 +39,21 @@ const GoogleLocationSearch = ({ value, onChange }) => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Manejar cambio en el input
+  // Manejar lo que escribe el usuario
   const handleInputChange = (e) => {
     const val = e.target.value;
-    setInputValue(val);
+    setInputValue(val); // Actualizamos el input visual
 
-    // Si borra todo, limpiamos
+    // Si borra todo manualmente
     if (!val) {
       setOptions([]);
       setShowOptions(false);
-      onChange(""); // Avisamos al padre que se borró
+      onChange(""); // Avisamos al padre
       return;
     }
+
+    // No llamamos onChange para no guardar texto parcial
+    // Solo guardamos al seleccionar opción
 
     setShowOptions(true);
     fetchPredictions(val);
@@ -60,7 +68,6 @@ const GoogleLocationSearch = ({ value, onChange }) => {
       input: val,
       sessionToken: sessionToken.current,
       componentRestrictions: { country: "ar" }, // Solo Argentina
-      // Bias hacia CABA (Obelisco)
       locationBias: {
         north: -34.5,
         south: -34.7,
@@ -83,18 +90,24 @@ const GoogleLocationSearch = ({ value, onChange }) => {
   };
 
   const handleSelectOption = (place) => {
-    // El texto principal suele ser el nombre del lugar
-    // La descripción completa incluye la dirección
-    const fullText = place.description;
+    const fullText = place.description; // Ej: "Antares, Armenia, Palermo..."
 
+    // Actualizamos estado interno y avisamos al padre
     setInputValue(fullText);
-    onChange(fullText); // Enviamos al padre
+    onChange(fullText);
     setShowOptions(false);
 
-    // Generar nuevo token para la siguiente búsqueda (requisito de Google para ahorrar $)
+    // Nuevo token para la próxima búsqueda
     if (placesLibrary) {
       sessionToken.current = new placesLibrary.AutocompleteSessionToken();
     }
+  };
+
+  const handleClear = () => {
+    setInputValue("");
+    onChange("");
+    setOptions([]);
+    setShowOptions(false);
   };
 
   return (
@@ -115,13 +128,14 @@ const GoogleLocationSearch = ({ value, onChange }) => {
           autoComplete="off"
         />
 
-        {/* Loader o Botón limpiar */}
         <div
           style={{
             position: "absolute",
             right: "12px",
             top: "14px",
             zIndex: 10,
+            display: "flex",
+            alignItems: "center",
           }}
         >
           {isLoading ? (
@@ -129,26 +143,23 @@ const GoogleLocationSearch = ({ value, onChange }) => {
           ) : inputValue ? (
             <button
               type="button"
-              onClick={() => {
-                setInputValue("");
-                onChange("");
-                setOptions([]);
-                setShowOptions(false);
-              }}
+              onClick={handleClear}
               style={{
                 background: "none",
                 border: "none",
                 cursor: "pointer",
                 padding: 0,
+                display: "flex",
+                alignItems: "center",
+                color: "#1a1a1a",
               }}
             >
-              <X size={16} />
+              <X size={16} strokeWidth={3} />
             </button>
           ) : null}
         </div>
       </div>
 
-      {/* LISTA DE RESULTADOS PERSONALIZADA (Estilo Pop) */}
       {showOptions && options.length > 0 && (
         <ul
           className="pop-options-list"
@@ -166,28 +177,26 @@ const GoogleLocationSearch = ({ value, onChange }) => {
                 fontSize: "14px",
               }}
             >
-              {/* Texto principal (Nombre del lugar) */}
               <span style={{ fontWeight: 800, color: "#1a1a1a" }}>
                 {place.structured_formatting.main_text}
               </span>
-              {/* Texto secundario (Dirección) */}
               <span style={{ fontSize: "12px", color: "#666" }}>
                 {place.structured_formatting.secondary_text}
               </span>
             </li>
           ))}
-          {/* Logo de Google obligatorio por términos de servicio */}
           <li
             style={{
               padding: "4px 10px",
               textAlign: "right",
               borderTop: "1px solid #eee",
+              background: "#fafafa",
             }}
           >
             <img
-              src="https://developers.google.com/maps/documentation/images/powered_by_google_on_white.png"
+              src="https://developers.google.com/static/maps/documentation/images/powered_by_google_on_white.png"
               alt="Powered by Google"
-              style={{ height: "12px", opacity: 0.7 }}
+              style={{ height: "10px", opacity: 0.8 }}
             />
           </li>
         </ul>

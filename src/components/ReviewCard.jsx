@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { MapPin, DollarSign, Calendar, Pencil, Trash2 } from "lucide-react"; // Importar nuevos iconos
+import { MapPin, DollarSign, Calendar, Pencil, Trash2 } from "lucide-react";
 import StarRating from "./StarRating";
 import "./ReviewCard.css";
 
@@ -31,7 +31,7 @@ const ReviewCard = ({ review, index, onEdit, onDelete }) => {
 
   const isLegacy = review.ratingFifi === undefined;
 
-  // Manejadores para evitar propagación (que no se active el hover de la card raro)
+  // Evitar que el click propague y active el hover raro de la card
   const handleEditClick = (e) => {
     e.stopPropagation();
     onEdit(review);
@@ -144,7 +144,7 @@ const ReviewCard = ({ review, index, onEdit, onDelete }) => {
           )}
         </div>
 
-        {/* --- BOTONES DE ACCIÓN --- */}
+        {/* Botones de acción */}
         <div className="action-buttons">
           <button
             className="action-btn edit-btn"

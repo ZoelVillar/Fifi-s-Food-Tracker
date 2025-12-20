@@ -8,7 +8,7 @@ const StarRating = ({
   onRatingChange,
   interactive = true,
   size = 28,
-  activeColor = "#ffdd59", // Color por defecto (Amarillo)
+  activeColor = "#ffdd59", // Color por defecto (amarillo)
 }) => {
   const [hoverRating, setHoverRating] = useState(0);
   const [isAnimating, setIsAnimating] = useState(false);
@@ -66,10 +66,10 @@ const StarRating = ({
               </>
             )}
 
-            {/* Estrella Fondo (Borde) */}
+            {/* Estrella fondo (borde) */}
             <Star size={size} className="star-bg" strokeWidth={3} />
 
-            {/* Estrella Relleno (Con color dinámico) */}
+            {/* Estrella relleno (con color dinámico) */}
             <motion.div
               className="star-fill-mask"
               initial={false}
@@ -80,14 +80,14 @@ const StarRating = ({
                 size={size}
                 className="star-fg"
                 strokeWidth={3}
-                style={{ fill: activeColor }} // APLICAMOS EL COLOR AQUÍ
+                style={{ fill: activeColor }} // Aplicamos el color acá
               />
             </motion.div>
           </motion.div>
         );
       })}
 
-      {/* Número al lado (Badge) */}
+      {/* Número al lado (badge) */}
       {interactive && rating > 0 && (
         <span
           className="rating-number"

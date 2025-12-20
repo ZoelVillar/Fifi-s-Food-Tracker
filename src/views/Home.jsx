@@ -11,7 +11,7 @@ const Home = ({ onNavigateToStats }) => {
   const [recentReviews, setRecentReviews] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Estado para manejar la edición
+  // Estado para manejar edición
   const [editingReview, setEditingReview] = useState(null);
 
   const loadRecentReviews = async () => {
@@ -39,7 +39,7 @@ const Home = ({ onNavigateToStats }) => {
 
   const handleEdit = (review) => {
     setEditingReview(review);
-    // El scroll up ya lo hace el ReviewForm con useEffect
+    // El scroll up lo hace el ReviewForm con useEffect
   };
 
   const handleDelete = async (id) => {
@@ -60,7 +60,7 @@ const Home = ({ onNavigateToStats }) => {
       <Header onStatsClick={onNavigateToStats} />
 
       <div className="home-content">
-        {/* Formulario Principal (Ahora acepta props de edición) */}
+        {/* Form principal (ahora acepta props de edición) */}
         <ReviewForm
           onSaveSuccess={handleSaveSuccess}
           editingReview={editingReview}
