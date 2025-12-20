@@ -1,29 +1,38 @@
+/* global google */
 import { useEffect, useRef, useState } from "react";
 import { useMapsLibrary } from "@vis.gl/react-google-maps";
-import { MapPin, X } from "lucide-react";
-import "./ReviewForm.css"; // Reusamos estilos
+import { MapPin, X, AlertTriangle } from "lucide-react";
+import "./ReviewForm.css";
 
 const GoogleLocationSearch = ({ value, onChange }) => {
+  // Empezamos con el valor que nos pasa el padre
   const [inputValue, setInputValue] = useState(value || "");
+  const [error, setError] = useState(false); // Para chequear si la API falla
+
   const inputRef = useRef(null);
   const placesLibrary = useMapsLibrary("places");
   const autocompleteRef = useRef(null);
 
-  // Guardamos onChange en un ref para poder llamarlo dentro del listener
-  // sin tener que meterlo en las dependencias del useEffect (esto evita el bug de reinicio)
+  // Ref para manejar onChange sin que se reinicien los efectos
   const onChangeRef = useRef(onChange);
   useEffect(() => {
     onChangeRef.current = onChange;
   }, [onChange]);
 
+  // Solo sincronizamos cuando el padre cambia drásticamente, tipo al limpiar el form
   useEffect(() => {
-    // Si la librería no cargó o no hay input, no hacemos nada
+    if (value === "" && inputValue !== "") {
+      setInputValue("");
+    }
+    // No incluimos 'inputValue' para evitar loops infinitos en mobile
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value]);
+
+  useEffect(() => {
     if (!placesLibrary || !inputRef.current) return;
 
-    // --- CONFIGURACIÓN INTELIGENTE (CABA/GBA) ---
-    const center = { lat: -34.6037, lng: -58.3816 }; // Coordenadas del Obelisco
-
-    // Definimos un radio de preferencia (aprox 50km a la redonda para cubrir AMBA)
+    // Config para Argentina, centrado en CABA
+    const center = { lat: -34.6037, lng: -58.3816 };
     const defaultBounds = {
       north: center.lat + 0.5,
       south: center.lat - 0.5,
@@ -32,82 +41,81 @@ const GoogleLocationSearch = ({ value, onChange }) => {
     };
 
     const opts = {
-      fields: ["geometry", "name", "formatted_address", "url"],
+      fields: ["name", "formatted_address"], // Pedimos solo lo mínimo para no gastar requests
       types: ["establishment", "geocode"],
-      // 1. FILTRO DE PAÍS: Solo Argentina (Adiós Andorra)
       componentRestrictions: { country: "ar" },
-      // 2. BIAS GEOGRÁFICO: Prioridad a Buenos Aires
       locationBias: defaultBounds,
     };
 
-    // Crear la instancia SOLO UNA VEZ
-    const auto = new placesLibrary.Autocomplete(inputRef.current, opts);
-    autocompleteRef.current = auto;
+    let listener = null;
+    try {
+      const auto = new placesLibrary.Autocomplete(inputRef.current, opts);
+      autocompleteRef.current = auto;
 
-    // Listener
-    const listener = auto.addListener("place_changed", () => {
-      const place = auto.getPlace();
+      listener = auto.addListener("place_changed", () => {
+        const place = auto.getPlace();
 
-      if (!place.name) return;
+        if (!place.name) return;
 
-      // Limpieza de nombre
-      let cleanAddress = place.name;
-      if (place.formatted_address) {
-        const addressParts = place.formatted_address.split(",");
-        if (addressParts.length > 1) {
-          cleanAddress = `${place.name}, ${addressParts[1].trim()}`;
+        let cleanAddress = place.name;
+        if (place.formatted_address) {
+          const addressParts = place.formatted_address.split(",");
+          if (addressParts.length > 1) {
+            cleanAddress = `${place.name}, ${addressParts[1].trim()}`;
+          }
         }
-      }
 
-      setInputValue(cleanAddress);
-      // Usamos el ref para llamar a la función más reciente sin romper el hook
-      if (onChangeRef.current) {
-        onChangeRef.current(cleanAddress);
-      }
-    });
+        setInputValue(cleanAddress);
+        if (onChangeRef.current) onChangeRef.current(cleanAddress);
+      });
 
-    // Cleanup
+      // Manejo de errores de sesión (opcional, útil para debug)
+      // Google no tira eventos de error fáciles, pero si falla la lib lo vemos antes.
+    } catch (err) {
+      console.error("Error iniciando Autocomplete:", err);
+      setError(true);
+    }
+
     return () => {
-      if (window.google && window.google.maps) {
-        window.google.maps.event.clearInstanceListeners(listener);
+      if (listener) {
+        google.maps.event.removeListener(listener);
       }
     };
-    // ¡OJO AQUÍ! Quitamos 'onChange' de las dependencias.
-    // Ahora solo se reinicia si cambia la librería (que no pasa nunca).
   }, [placesLibrary]);
 
-  // Sincronizar si el valor viene de fuera (ej: limpiar form)
-  useEffect(() => {
-    if (value !== inputValue) {
-      setInputValue(value);
-    }
-  }, [value]);
+  // Handler manual para cuando el usuario escribe
+  const handleInputChange = (e) => {
+    const val = e.target.value;
+    setInputValue(val);
+    // Avisamos al padre, pero no esperamos que nos devuelva nada
+    // Evita lag en Android
+    if (onChangeRef.current) onChangeRef.current(val);
+  };
 
   return (
-    <div className="input-wrapper">
+    <div className="input-wrapper" style={{ position: "relative" }}>
       <MapPin className="input-icon" size={20} strokeWidth={3} />
+
       <input
         ref={inputRef}
         type="text"
         value={inputValue}
-        // Actualizamos el estado local mientras escribes para que React no se pelee con Google
-        onChange={(e) => {
-          setInputValue(e.target.value);
-          onChange(e.target.value);
-        }}
+        onChange={handleInputChange}
         placeholder="Busca en Google Maps..."
         className="modern-input"
-        // Importante: Desactivar autocompletado del navegador para que no tape al de Google
-        autoComplete="off"
+        autoComplete="off" // Importante: evita que salga el teclado de direcciones en móviles
+        inputMode="text" // Para que los móviles sepan qué teclado mostrar
+        style={{ fontSize: "16px" }} // Evita zoom en iPhone al escribir
       />
+
+      {/* Botón para limpiar */}
       {inputValue && (
         <button
           type="button"
           onClick={() => {
             setInputValue("");
-            onChange("");
-            // Foco de vuelta al input tras limpiar
-            if (inputRef.current) inputRef.current.focus();
+            if (onChangeRef.current) onChangeRef.current("");
+            inputRef.current?.focus();
           }}
           style={{
             position: "absolute",
@@ -116,10 +124,18 @@ const GoogleLocationSearch = ({ value, onChange }) => {
             border: "none",
             cursor: "pointer",
             zIndex: 10,
+            padding: "5px", // Área de toque más grande
           }}
         >
           <X size={16} />
         </button>
+      )}
+
+      {/* Icono de aviso si algo falla feo */}
+      {error && (
+        <div style={{ position: "absolute", right: "40px", color: "red" }}>
+          <AlertTriangle size={16} />
+        </div>
       )}
     </div>
   );

@@ -21,10 +21,10 @@ const ReviewCard = ({ review, index }) => {
     }).format(price);
   };
 
-  // Función para abrir Google Maps
+  // Función para abrir en Google Maps
   const handleLocationClick = (e) => {
-    e.stopPropagation(); // Evita que el clic dispare otros eventos de la tarjeta
-    // Esta URL funciona en web y abre la app nativa en móviles
+    e.stopPropagation(); // Evita que el click dispare otros eventos de la card
+    // Esta URL anda en web y abre la app nativa en móviles
     const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
       review.location
     )}`;
@@ -52,7 +52,7 @@ const ReviewCard = ({ review, index }) => {
         <div className="place-info">
           <h3 className="review-place">{review.placeName}</h3>
 
-          {/* UBICACIÓN CLICKEABLE */}
+          {/* Ubicación clickeable */}
           {review.location && (
             <div
               className="location-badge"
@@ -78,7 +78,7 @@ const ReviewCard = ({ review, index }) => {
         </div>
       </div>
 
-      {/* ... Resto del componente (Items, Texto, Footer) igual ... */}
+      {/* ... El resto del componente (Items, Texto, Footer) igual ... */}
 
       {review.items && review.items.length > 0 && (
         <div className="items-container">

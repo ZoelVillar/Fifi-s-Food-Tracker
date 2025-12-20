@@ -3,12 +3,12 @@ import { BarChart3, UtensilsCrossed } from "lucide-react";
 import "./Header.css";
 
 const Header = ({ onStatsClick, showStatsButton = true }) => {
-  // Función simple para recargar o ir al inicio si estamos en stats
-  // Nota: En una app con routing real usaríamos useNavigate o Link
+  // Función básica para volver arriba o al inicio si estamos en stats
+  // Nota: En una app con routing de verdad usaríamos useNavigate o Link
   const handleLogoClick = () => {
     window.scrollTo({ top: 0, behavior: "smooth" });
-    // Si tienes una prop para navegar a home, úsala aquí.
-    // Por ahora es meramente estético o para scroll top.
+    // Si tenés una prop para navegar a home, usala acá.
+    // Por ahora es solo estético o para scrollear arriba.
   };
 
   return (

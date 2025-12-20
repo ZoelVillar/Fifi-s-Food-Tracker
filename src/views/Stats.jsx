@@ -1,5 +1,4 @@
 import { useState, useMemo, useEffect } from "react";
-import { motion } from "framer-motion";
 import {
   ArrowLeft,
   Calendar,
@@ -47,6 +46,22 @@ const COLORS = [
   "#ff9ff3",
 ];
 
+// Datos auxiliares constantes
+const monthNames = [
+  "Enero",
+  "Febrero",
+  "Marzo",
+  "Abril",
+  "Mayo",
+  "Junio",
+  "Julio",
+  "Agosto",
+  "Septiembre",
+  "Octubre",
+  "Noviembre",
+  "Diciembre",
+];
+
 const Stats = ({ onBack }) => {
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -60,21 +75,6 @@ const Stats = ({ onBack }) => {
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
 
   // Datos auxiliares
-  const monthNames = [
-    "Enero",
-    "Febrero",
-    "Marzo",
-    "Abril",
-    "Mayo",
-    "Junio",
-    "Julio",
-    "Agosto",
-    "Septiembre",
-    "Octubre",
-    "Noviembre",
-    "Diciembre",
-  ];
-
   const categoryOptions = ["Todas", ...CATEGORIES];
 
   useEffect(() => {

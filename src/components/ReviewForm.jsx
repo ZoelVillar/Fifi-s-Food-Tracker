@@ -55,7 +55,7 @@ const ReviewForm = ({ onSaveSuccess }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.placeName || formData.rating === 0) {
-      alert("¡Oye! Falta el nombre del lugar o el puntaje.");
+      alert("Pelotudo! Falta el nombre del lugar o el rating.");
       return;
     }
 
@@ -99,9 +99,9 @@ const ReviewForm = ({ onSaveSuccess }) => {
       className="form-container"
     >
       <form onSubmit={handleSubmit} className="review-form">
-        {/* --- SECCIÓN PRINCIPAL --- */}
+        {/* --- Sección principal --- */}
         <div className="form-grid">
-          {/* Nombre del Lugar */}
+          {/* Nombre del lugar */}
           <div className="input-group full-width">
             <label>Lugar</label>
             <div className="input-wrapper">
@@ -147,7 +147,7 @@ const ReviewForm = ({ onSaveSuccess }) => {
             </div>
           </div>
         </div>
-        {/* --- SECCIÓN COMIDA (ITEMS) --- */}
+        {/* --- Sección comida (items) --- */}
         <div className="items-section">
           <label className="section-label">¿QUÉ PIDIERON?</label>
 
@@ -189,7 +189,7 @@ const ReviewForm = ({ onSaveSuccess }) => {
             </button>
           </div>
 
-          {/* Lista de Items Agregados (Pills) */}
+          {/* Lista de items agregados (pills) */}
           <div className="items-list">
             <AnimatePresence>
               {formData.items.map((item, index) => (
@@ -214,7 +214,7 @@ const ReviewForm = ({ onSaveSuccess }) => {
             </AnimatePresence>
           </div>
         </div>
-        {/* --- SECCIÓN PUNTAJE Y RESEÑA --- */}
+        {/* --- Sección rating y reseña --- */}
         <div className="rating-section">
           <label
             className="section-label centered"
@@ -250,7 +250,7 @@ const ReviewForm = ({ onSaveSuccess }) => {
             />
           </div>
         </div>
-        {/* --- BOTÓN SUBMIT --- */}
+        {/* --- Botón submit --- */}
         <motion.button
           type="submit"
           className="submit-btn-large"
