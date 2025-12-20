@@ -1,3 +1,4 @@
+import { motion } from "framer-motion";
 import { useState, useMemo, useEffect } from "react";
 import {
   ArrowLeft,
