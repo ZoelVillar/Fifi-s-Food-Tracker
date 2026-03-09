@@ -19,11 +19,20 @@
 
 /* Para que el texto se lea bien sobre el patrón */
 .form-grid,
-.form-section,
-.input-group {
+.form-section {
   background: #fff;
   position: relative;
   z-index: 1;
+}
+
+.input-group {
+  background: #fff;
+  position: relative;
+}
+
+/* Eleva el grupo que tiene el foco para que sus dropdowns no se tapen */
+.input-group:focus-within {
+  z-index: 10;
 }
 
 /* --- GRID DE INPUTS --- */
@@ -111,6 +120,11 @@
   margin-bottom: 24px;
   border: 3px solid #1a1a1a;
   box-shadow: 4px 4px 0px #1a1a1a;
+  position: relative;
+}
+
+.items-section:focus-within {
+  z-index: 10;
 }
 
 .section-label {
