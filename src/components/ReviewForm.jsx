@@ -11,7 +11,10 @@ import {
   MessageSquare,
   RotateCcw, // Icono para cancelar
   Pencil, // Icono para indicar edición
+  Calendar,
 } from "lucide-react";
+
+import PopCalendar from "./PopCalendar";
 import StarRating from "./StarRating";
 import { CATEGORIES } from "../constants/categories";
 import { addReview, updateReview } from "../services/firestoreService";
@@ -24,6 +27,7 @@ const ReviewForm = ({ onSaveSuccess, editingReview, onCancelEdit }) => {
     placeName: "",
     location: "",
     price: "",
+    reviewDate: new Date().toISOString().split("T")[0], // Fecha de hoy por defecto
     ratingFifi: 0,
     ratingZozo: 0,
     reviewText: "",
@@ -41,6 +45,7 @@ const ReviewForm = ({ onSaveSuccess, editingReview, onCancelEdit }) => {
         placeName: editingReview.placeName || "",
         location: editingReview.location || "",
         price: editingReview.price || "",
+        reviewDate: editingReview.reviewDate || new Date().toISOString().split("T")[0],
         // Compatibilidad con ratings viejos
         ratingFifi: editingReview.ratingFifi || editingReview.rating || 0,
         ratingZozo: editingReview.ratingZozo || editingReview.rating || 0,
@@ -93,6 +98,7 @@ const ReviewForm = ({ onSaveSuccess, editingReview, onCancelEdit }) => {
         placeName: formData.placeName.trim(),
         location: formData.location.trim(),
         price: parseFloat(formData.price) || 0,
+        reviewDate: formData.reviewDate,
         ratingFifi: formData.ratingFifi,
         ratingZozo: formData.ratingZozo,
         reviewText: formData.reviewText.trim(),
@@ -168,6 +174,16 @@ const ReviewForm = ({ onSaveSuccess, editingReview, onCancelEdit }) => {
           </div>
 
           <div className="input-group">
+            <label>Fecha de Visita</label>
+            <PopCalendar
+              value={formData.reviewDate}
+              onChange={(val) =>
+                setFormData((prev) => ({ ...prev, reviewDate: val }))
+              }
+            />
+          </div>
+
+          <div className="input-group full-width">
             <label>Precio Total</label>
             <div className="input-wrapper">
               <DollarSign className="input-icon" size={20} strokeWidth={3} />

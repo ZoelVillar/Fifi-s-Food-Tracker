@@ -4,12 +4,22 @@ import StarRating from "./StarRating";
 import "./ReviewCard.css";
 
 const ReviewCard = ({ review, index, onEdit, onDelete }) => {
-  const formatDate = (timestamp) => {
-    if (!timestamp) return "";
-    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+  const formatDate = (dateStr, timestamp) => {
+    let date;
+    if (dateStr) {
+      // dateStr viene como YYYY-MM-DD
+      const [year, month, day] = dateStr.split("-");
+      date = new Date(year, month - 1, day);
+    } else if (timestamp) {
+      date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+    } else {
+      return "";
+    }
+
     return new Intl.DateTimeFormat("es-AR", {
       day: "numeric",
       month: "short",
+      year: "numeric",
     }).format(date);
   };
 
@@ -136,10 +146,10 @@ const ReviewCard = ({ review, index, onEdit, onDelete }) => {
               <span>{formatPrice(review.price)}</span>
             </div>
           )}
-          {review.timestamp && (
+          {(review.reviewDate || review.timestamp) && (
             <div className="meta-tag date-tag">
               <Calendar size={16} strokeWidth={3} />
-              <span>{formatDate(review.timestamp)}</span>
+              <span>{formatDate(review.reviewDate, review.timestamp)}</span>
             </div>
           )}
         </div>

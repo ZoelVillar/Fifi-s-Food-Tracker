@@ -102,25 +102,27 @@ const Stats = ({ onBack }) => {
     return 0;
   };
 
+  // Helper para obtener fecha (reviewDate preferido, timestamp como fallback)
+  const getReviewDateObj = (r) => {
+    if (r.reviewDate) {
+      // Forzamos el parseo como fecha local para evitar desfases de zona horaria
+      const [year, month, day] = r.reviewDate.split("-");
+      return new Date(year, month - 1, day);
+    }
+    return r.timestamp?.toDate ? r.timestamp.toDate() : new Date(r.timestamp);
+  };
+
   // Años disponibles
   const availableYears = useMemo(() => {
     const currentYear = new Date().getFullYear();
     if (reviews.length === 0) return [String(currentYear)];
 
-    // Extraer años únicos de las reseñas
     const years = new Set(
-      reviews.map((r) => {
-        if (!r.timestamp) return currentYear;
-        return r.timestamp.toDate
-          ? r.timestamp.toDate().getFullYear()
-          : new Date(r.timestamp).getFullYear();
-      })
+      reviews.map((r) => getReviewDateObj(r).getFullYear())
     );
 
-    // Asegurar que el año actual esté siempre disponible aunque no haya reseñas aún
     years.add(currentYear);
 
-    // Retornar ordenados descendente (2025, 2024...)
     return Array.from(years)
       .sort((a, b) => b - a)
       .map(String);
@@ -136,23 +138,18 @@ const Stats = ({ onBack }) => {
     );
   }, [reviews, selectedCategory]);
 
-  // 2. Filtro intermedio por AÑO (Para la pestaña Histórico/Anual)
+  // 2. Filtro intermedio por AÑO
   const yearFilteredReviews = useMemo(() => {
     return categoryFilteredReviews.filter((r) => {
-      if (!r.timestamp) return false;
-      const date = r.timestamp.toDate
-        ? r.timestamp.toDate()
-        : new Date(r.timestamp);
+      const date = getReviewDateObj(r);
       return date.getFullYear() === parseInt(selectedYear);
     });
   }, [categoryFilteredReviews, selectedYear]);
 
-  // 3. Datos MENSUALES (Micro detalle)
+  // 3. Datos MENSUALES
   const monthData = useMemo(() => {
     const filtered = yearFilteredReviews.filter((r) => {
-      const date = r.timestamp.toDate
-        ? r.timestamp.toDate()
-        : new Date(r.timestamp);
+      const date = getReviewDateObj(r);
       return date.getMonth() + 1 === parseInt(selectedMonth);
     });
 
@@ -161,14 +158,13 @@ const Stats = ({ onBack }) => {
       0
     );
 
-    // MODIFICADO: Uso de getEffectiveRating
     const avgRating =
       filtered.length > 0
         ? filtered.reduce((acc, curr) => acc + getEffectiveRating(curr), 0) /
           filtered.length
         : 0;
 
-    // A. Distribución de Categorías (Diet)
+    // A. Distribución de Categorías
     let categoryPieData = [];
     if (selectedCategory === "Todas") {
       const catCount = {};
@@ -183,14 +179,12 @@ const Stats = ({ onBack }) => {
         .slice(0, 6);
     }
 
-    // B. Ritmo Semanal (Requerimiento 1: Movido a Mensual)
-    const daysMap = { 0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 }; // 0=Domingo
+    // B. Ritmo Semanal
+    const daysMap = { 0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 };
     const dayNamesChart = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
 
     filtered.forEach((r) => {
-      const date = r.timestamp.toDate
-        ? r.timestamp.toDate()
-        : new Date(r.timestamp);
+      const date = getReviewDateObj(r);
       daysMap[date.getDay()] += 1;
     });
 
@@ -209,21 +203,13 @@ const Stats = ({ onBack }) => {
     };
   }, [yearFilteredReviews, selectedMonth, selectedCategory]);
 
-  // 4. Datos ANUALES / HISTÓRICOS (Macro detalle)
+  // 4. Datos ANUALES / HISTÓRICOS
   const historyData = useMemo(() => {
-    // Usamos yearFilteredReviews para respetar el filtro de Año
-
-    // A. Frecuencia Mensual (Requerimiento 2)
     const monthsMap = {};
-    monthNames.forEach((m, i) => (monthsMap[i] = 0)); // Inicializar 0-11
+    monthNames.forEach((m, i) => (monthsMap[i] = 0));
 
-    // B. Distribución de Ratings
     const ratingMap = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
-
-    // C. Scatter
     const scatterPoints = [];
-
-    // D. Totales y Lugares
     let totalSpentHistory = 0;
     const placeCount = {};
 
@@ -231,11 +217,8 @@ const Stats = ({ onBack }) => {
       const price = r.price || 0;
       totalSpentHistory += price;
 
-      const date = r.timestamp.toDate
-        ? r.timestamp.toDate()
-        : new Date(r.timestamp);
+      const date = getReviewDateObj(r);
 
-      // Conteo por Mes (Ene, Feb...)
       monthsMap[date.getMonth()] += 1;
 
       // Rating (MODIFICADO: Uso de getEffectiveRating)

@@ -18,10 +18,8 @@ export const addReview = async (reviewData) => {
   try {
     const docRef = await addDoc(collection(db, COLLECTION_NAME), {
       ...reviewData,
-      // Aseguramos timestamp correcto
-      timestamp: reviewData.timestamp instanceof Date
-        ? Timestamp.fromDate(reviewData.timestamp)
-        : reviewData.timestamp,
+      // timestamp guarda el momento de creación para auditoría
+      timestamp: Timestamp.now(),
       // Nos aseguramos que los ratings sean numéricos
       ratingFifi: parseFloat(reviewData.ratingFifi) || 0,
       ratingZozo: parseFloat(reviewData.ratingZozo) || 0,
@@ -40,7 +38,7 @@ export const getRecentReviews = async (limitCount = 5) => {
   try {
     const q = query(
       collection(db, COLLECTION_NAME),
-      orderBy("timestamp", "desc"),
+      orderBy("reviewDate", "desc"),
       limit(limitCount)
     );
     const querySnapshot = await getDocs(q);
@@ -59,7 +57,7 @@ export const getAllReviews = async () => {
   try {
     const q = query(
       collection(db, COLLECTION_NAME),
-      orderBy("timestamp", "desc")
+      orderBy("reviewDate", "desc")
     );
     const querySnapshot = await getDocs(q);
     return querySnapshot.docs.map(doc => ({
